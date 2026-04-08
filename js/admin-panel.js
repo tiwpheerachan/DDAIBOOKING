@@ -5,20 +5,20 @@
  */
 
 let activeTab = "dashboard";
-let selectedDate = formatDate(new Date());
-let tsCalYear = new Date().getFullYear();
-let tsCalMonth = new Date().getMonth();
-let tsSelectedDate = formatDate(new Date());
+let selectedDate = todayThai();
+let tsCalYear = nowThai().getFullYear();
+let tsCalMonth = nowThai().getMonth();
+let tsSelectedDate = todayThai();
 let filterStatus = "all";
-let holidayCalYear = new Date().getFullYear();
-let holidayCalMonth = new Date().getMonth();
-let bookingCalYear = new Date().getFullYear();
-let bookingCalMonth = new Date().getMonth();
-let bookingSelectedDate = formatDate(new Date());
+let holidayCalYear = nowThai().getFullYear();
+let holidayCalMonth = nowThai().getMonth();
+let bookingCalYear = nowThai().getFullYear();
+let bookingCalMonth = nowThai().getMonth();
+let bookingSelectedDate = todayThai();
 let bookingSelectedId = null;
-let schedCalYear = new Date().getFullYear();
-let schedCalMonth = new Date().getMonth();
-let schedSelectedDate = formatDate(new Date());
+let schedCalYear = nowThai().getFullYear();
+let schedCalMonth = nowThai().getMonth();
+let schedSelectedDate = todayThai();
 let schedViewSlot = null; // booking id for detail view
 
 // SVG icon helper
@@ -29,6 +29,7 @@ const ICONS = {
   timeslots: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
   holidays: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>',
   settings: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
+  logs: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>',
 };
 
 const TABS = [
@@ -37,6 +38,7 @@ const TABS = [
   { key: "bookings", label: "รายการจอง", icon: ICONS.bookings },
   { key: "timeslots", label: "จัดการเวลา", icon: ICONS.timeslots },
   { key: "holidays", label: "วันหยุด", icon: ICONS.holidays },
+  { key: "logs", label: "ประวัติ", icon: ICONS.logs },
   { key: "settings", label: "ตั้งค่า", icon: ICONS.settings },
 ];
 
@@ -70,7 +72,7 @@ function renderPage() {
     settings.breakStart,
     settings.breakEnd
   );
-  const today = formatDate(new Date());
+  const today = todayThai();
 
   // =============================================
   // DASHBOARD
@@ -482,6 +484,43 @@ function renderPage() {
   }
 
   // =============================================
+  // LOGS
+  // =============================================
+  else if (activeTab === "logs") {
+    const allLogs = (_cache.logs || []).slice(0, 200);
+    page.innerHTML = `
+      <div class="card fade-in">
+        <div class="card-header">
+          <div>
+            <h3>ประวัติการดำเนินการ</h3>
+            <p>ล่าสุด ${allLogs.length} รายการ</p>
+          </div>
+        </div>
+        ${allLogs.length === 0 ? '<div class="empty-state"><p>ยังไม่มีประวัติ</p></div>' : `
+        <div class="log-list">
+          ${allLogs.map(l => {
+            const bk = bookings.find(b => b.id === l.booking_id);
+            const timeStr = l.created_at ? new Date(l.created_at).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" }) : "";
+            return `
+            <div class="log-item">
+              <div class="log-icon ${l.action === 'status_change' ? 'log-status' : l.action === 'restore' ? 'log-restore' : 'log-other'}">
+                ${l.action === 'status_change' ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'
+                : l.action === 'restore' ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 12a9 9 0 109-9"/><path d="M3 3v9h9"/></svg>'
+                : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>'}
+              </div>
+              <div class="log-body">
+                <div class="log-title">${bk ? bk.name + ' (' + (bk.refCode || '#' + bk.id) + ')' : 'Booking #' + l.booking_id}</div>
+                <div class="log-detail">${l.detail || l.action}</div>
+              </div>
+              <div class="log-time">${timeStr}</div>
+            </div>`;
+          }).join("")}
+        </div>`}
+      </div>
+    `;
+  }
+
+  // =============================================
   // SETTINGS
   // =============================================
   else if (activeTab === "settings") {
@@ -576,7 +615,7 @@ function renderPage() {
 function renderSchedCalendar(bookings, blocked, allSlots) {
   const firstDay = new Date(schedCalYear, schedCalMonth, 1).getDay();
   const daysInMonth = new Date(schedCalYear, schedCalMonth + 1, 0).getDate();
-  const todayStr = formatDate(new Date());
+  const todayStr = todayThai();
 
   let cells = '';
   for (let i = 0; i < firstDay; i++) {
@@ -641,7 +680,7 @@ function renderSchedCalendar(bookings, blocked, allSlots) {
 function renderTsCalendar(bookings, blocked, allSlots) {
   const firstDay = new Date(tsCalYear, tsCalMonth, 1).getDay();
   const daysInMonth = new Date(tsCalYear, tsCalMonth + 1, 0).getDate();
-  const todayStr = formatDate(new Date());
+  const todayStr = todayThai();
   const total = allSlots.length;
 
   let cells = '';
@@ -696,7 +735,7 @@ function renderTsCalendar(bookings, blocked, allSlots) {
 function renderBookingCalendar(bookings) {
   const firstDay = new Date(bookingCalYear, bookingCalMonth, 1).getDay();
   const daysInMonth = new Date(bookingCalYear, bookingCalMonth + 1, 0).getDate();
-  const todayStr = formatDate(new Date());
+  const todayStr = todayThai();
 
   let cells = '';
   for (let i = 0; i < firstDay; i++) {
@@ -843,7 +882,19 @@ function renderBookingDetail(b) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
             ยกเลิก
           </button>` : ''}
+        ${b.status === 'cancelled' ? `
+          <button class="btn btn-ghost" onclick="doRestore(${b.id},'pending')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 12a9 9 0 109-9"/><path d="M3 3v9h9"/></svg>
+            กู้คืน (รอยืนยัน)
+          </button>` : ''}
+        ${b.status === 'completed' ? `
+          <button class="btn btn-ghost" onclick="doRestore(${b.id},'confirmed')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 12a9 9 0 109-9"/><path d="M3 3v9h9"/></svg>
+            ย้อนกลับ (ยืนยันแล้ว)
+          </button>` : ''}
       </div>
+
+      ${renderBookingLogs(b.id)}
     </div>
   `;
 }
@@ -854,7 +905,7 @@ function renderMiniMonth(year, month) {
   const holidays = getHolidays();
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const todayStr = formatDate(new Date());
+  const todayStr = todayThai();
 
   let cells = '';
   // Empty leading cells
@@ -955,6 +1006,28 @@ function renderActionBtns(b) {
       ยกเลิก</button>`;
   html += "</div>";
   return html;
+}
+
+function renderBookingLogs(bookingId) {
+  const logs = getLogsForBooking(bookingId);
+  if (logs.length === 0) return '';
+  return `
+    <div class="bk-logs" style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(0,0,0,0.06)">
+      <div style="font-size:12px;font-weight:700;color:var(--slate-500);margin-bottom:8px">ประวัติ</div>
+      ${logs.slice(0, 10).map(l => `
+        <div style="display:flex;gap:8px;padding:4px 0;font-size:11px;border-bottom:1px solid rgba(0,0,0,0.03)">
+          <span style="color:var(--slate-400);min-width:120px">${l.created_at ? new Date(l.created_at).toLocaleString("th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" }) : ""}</span>
+          <span style="color:var(--slate-700)">${l.detail || l.action}</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+async function doRestore(id, toStatus) {
+  if (!confirm("ต้องการกู้คืนการจองนี้?")) return;
+  await restoreBooking(id, toStatus);
+  renderPage();
 }
 
 function renderScheduleRow(b) {

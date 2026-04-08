@@ -18,6 +18,7 @@ const _cache = {
   bookings: [],
   blockedSlots: [],
   holidays: [],
+  logs: [],
   settings: null,
   loaded: false,
 };
@@ -64,7 +65,25 @@ function generateSlots(openTime, closeTime, duration, breakStart, breakEnd) {
   return slots;
 }
 
-function formatDate(d) { return d.toISOString().split("T")[0]; }
+function formatDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Get current date/time in Thailand timezone */
+function nowThai() {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
+}
+
+function todayThai() { return formatDate(nowThai()); }
+
+/** Current time in minutes since midnight (Thailand) */
+function nowMinutesThai() {
+  const n = nowThai();
+  return n.getHours() * 60 + n.getMinutes();
+}
 
 function thaiDate(dateStr) {
   const d = new Date(dateStr + "T00:00:00");
@@ -122,13 +141,27 @@ function getHolidays() { return _cache.holidays; }
 function getSettings() { return _cache.settings || { ...DEFAULT_SETTINGS }; }
 function isHoliday(date) { return _cache.holidays.some(h => h.date === date); }
 
-function getAvailableSlots(date) {
+function getAvailableSlots(date, skipPastFilter) {
   if (isHoliday(date)) return [];
   const s = getSettings();
+  const toMin = (t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
   const allSlots = generateSlots(s.openTime, s.closeTime, s.slotDuration, s.breakStart, s.breakEnd);
   const booked = _cache.bookings.filter(b => b.date === date && b.status !== "cancelled").map(b => b.time);
   const blocked = _cache.blockedSlots.filter(s => s.date === date).map(s => s.time);
-  return allSlots.filter(s => !booked.includes(s) && !blocked.includes(s));
+
+  let available = allSlots.filter(s => !booked.includes(s) && !blocked.includes(s));
+
+  // Filter past times for today (require 30 min advance, Thailand timezone)
+  if (!skipPastFilter && date === todayThai()) {
+    const cutoff = nowMinutesThai() + 30;
+    available = available.filter(s => toMin(s) >= cutoff);
+  }
+  // Past dates = no slots
+  if (!skipPastFilter && date < todayThai()) {
+    return [];
+  }
+
+  return available;
 }
 
 function findBookingByRef(refCode) {
@@ -161,17 +194,19 @@ async function addBooking(data) {
   return booking;
 }
 
-async function updateBookingStatus(id, status) {
+async function updateBookingStatus(id, status, source) {
+  const b = _cache.bookings.find(b => b.id === id);
+  const oldStatus = b?.status;
   const { error } = await _sb.from("bookings").update({ status }).eq("id", id);
   if (error) { console.error("updateStatus:", error); return; }
-  const b = _cache.bookings.find(b => b.id === id);
   if (b) b.status = status;
+  await addLog(id, "status_change", (source || "admin") + ": " + (STATUS_MAP[oldStatus]?.label || oldStatus) + " -> " + (STATUS_MAP[status]?.label || status));
 }
 
 async function cancelBookingByRef(refCode) {
   const b = _cache.bookings.find(b => b.refCode === refCode);
   if (!b || b.status === "cancelled" || b.status === "completed") return false;
-  await updateBookingStatus(b.id, "cancelled");
+  await updateBookingStatus(b.id, "cancelled", "customer");
   return true;
 }
 
@@ -206,6 +241,29 @@ async function updateBookingByRef(refCode, updates) {
 async function deleteBooking(id) {
   await _sb.from("bookings").delete().eq("id", id);
   _cache.bookings = _cache.bookings.filter(b => b.id !== id);
+}
+
+// ---- Activity Logs ----
+
+async function addLog(bookingId, action, detail) {
+  const { data: rows } = await _sb.from("booking_logs").insert({
+    booking_id: bookingId, action, detail: detail || "",
+    created_at: new Date().toISOString(),
+  }).select();
+  if (rows?.[0]) _cache.logs.push(rows[0]);
+}
+
+function getLogsForBooking(bookingId) {
+  return _cache.logs.filter(l => l.booking_id === bookingId).sort((a, b) => b.id - a.id);
+}
+
+async function restoreBooking(id, toStatus) {
+  const { error } = await _sb.from("bookings").update({ status: toStatus }).eq("id", id);
+  if (error) { console.error("restoreBooking:", error); return false; }
+  const b = _cache.bookings.find(b => b.id === id);
+  if (b) b.status = toStatus;
+  await addLog(id, "restore", "กู้คืนเป็น " + (STATUS_MAP[toStatus]?.label || toStatus));
+  return true;
 }
 
 async function saveSettings(s) {
@@ -247,25 +305,25 @@ async function toggleHoliday(date, label) {
 /** Fetch all data from Supabase into cache */
 async function _refreshAll() {
   try {
-    const [bkRes, blRes, holRes, setRes] = await Promise.all([
+    const [bkRes, blRes, holRes, setRes, logRes] = await Promise.all([
       _sb.from("bookings").select("*").order("id"),
       _sb.from("blocked_slots").select("*"),
       _sb.from("holidays").select("*"),
       _sb.from("settings").select("*").eq("id", 1).single(),
+      _sb.from("booking_logs").select("*").order("id", { ascending: false }).limit(500),
     ]);
 
     if (bkRes.error) console.error("Load bookings:", bkRes.error);
     if (blRes.error) console.error("Load blocked:", blRes.error);
-    if (holRes.error) console.error("Load holidays:", holRes.error);
-    if (setRes.error && setRes.error.code !== "PGRST116") console.error("Load settings:", setRes.error);
 
     _cache.bookings = (bkRes.data || []).map(_rowToBooking);
     _cache.blockedSlots = (blRes.data || []).map(r => ({ id: r.id, date: r.date, time: r.time }));
     _cache.holidays = (holRes.data || []).map(r => ({ id: r.id, date: r.date, label: r.label }));
     _cache.settings = setRes.data ? _rowToSettings(setRes.data) : { ...DEFAULT_SETTINGS };
+    _cache.logs = logRes.data || [];
     _cache.loaded = true;
 
-    console.log("Data loaded:", _cache.bookings.length, "bookings");
+    console.log("Data loaded:", _cache.bookings.length, "bookings,", _cache.logs.length, "logs");
   } catch (e) {
     console.error("_refreshAll failed:", e);
   }

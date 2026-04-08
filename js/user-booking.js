@@ -15,7 +15,7 @@ let calYear, calMonth;
 
 // Initialize calendar to next available month
 (function initCal() {
-  const tomorrow = new Date();
+  const tomorrow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
   tomorrow.setDate(tomorrow.getDate() + 1);
   calYear = tomorrow.getFullYear();
   calMonth = tomorrow.getMonth();
@@ -74,7 +74,7 @@ function canGoNext() {
 // ---- Calendar Builder ----
 
 function buildCalendar() {
-  const today = new Date();
+  const today = nowThai();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
