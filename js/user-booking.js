@@ -336,10 +336,12 @@ function render() {
           </div>
           <div class="form-group">
             <label>รุ่นกล้องที่นำมาติด <span class="req">*</span></label>
-            <select class="form-select" id="f_cameraModel" onchange="form.cameraModel=this.value">
+            <select class="form-select" id="f_cameraModel" onchange="onCameraSelect(this.value)">
               <option value="">-- เลือกรุ่นกล้อง --</option>
               ${settings.cameraModels.map((c) => `<option value="${c}" ${form.cameraModel === c ? "selected" : ""}>${c}</option>`).join("")}
+              <option value="__other" ${form.cameraModel && !settings.cameraModels.includes(form.cameraModel) ? "selected" : ""}>อื่นๆ (พิมพ์เอง)</option>
             </select>
+            <input class="form-input" id="f_cameraModelCustom" placeholder="พิมพ์รุ่นกล้อง" value="${form.cameraModel && !settings.cameraModels.includes(form.cameraModel) ? form.cameraModel : ''}" oninput="form.cameraModel=this.value" style="margin-top:6px;display:${form.cameraModel && !settings.cameraModels.includes(form.cameraModel) ? 'block' : 'none'}"  >
           </div>
           <div class="form-group">
             <label>ทะเบียนรถ <span class="req">*</span></label>
@@ -494,6 +496,28 @@ function prevStep() {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+function onCameraSelect(val) {
+  const custom = document.getElementById("f_cameraModelCustom");
+  if (val === "__other") {
+    custom.style.display = "block";
+    custom.focus();
+    form.cameraModel = custom.value;
+  } else {
+    custom.style.display = "none";
+    form.cameraModel = val;
+  }
+}
+
+function onEditCameraSelect(val) {
+  const custom = document.getElementById("ed_cameraModelCustom");
+  if (val === "__other") {
+    custom.style.display = "block";
+    custom.focus();
+  } else {
+    custom.style.display = "none";
+  }
+}
+
 function syncFormAndNext() {
   const fields = [
     "orderNumber","channel","cameraModel","licensePlate",
@@ -504,6 +528,11 @@ function syncFormAndNext() {
     const el = document.getElementById("f_" + key);
     if (el) form[key] = el.value;
   });
+  // Handle custom camera model
+  if (form.cameraModel === "__other") {
+    const custom = document.getElementById("f_cameraModelCustom");
+    form.cameraModel = custom ? custom.value : "";
+  }
   if (canGoNext()) nextStep();
 }
 
@@ -594,9 +623,11 @@ function renderCheckedBooking(b) {
           </div>
           <div class="form-group">
             <label>รุ่นกล้อง</label>
-            <select class="form-select" id="ed_cameraModel">
+            <select class="form-select" id="ed_cameraModel" onchange="onEditCameraSelect(this.value)">
               ${settings.cameraModels.map(c => `<option value="${c}" ${c === b.cameraModel ? 'selected' : ''}>${c}</option>`).join("")}
+              <option value="__other" ${b.cameraModel && !settings.cameraModels.includes(b.cameraModel) ? "selected" : ""}>อื่นๆ (พิมพ์เอง)</option>
             </select>
+            <input class="form-input" id="ed_cameraModelCustom" placeholder="พิมพ์รุ่นกล้อง" value="${b.cameraModel && !settings.cameraModels.includes(b.cameraModel) ? b.cameraModel : ''}" style="margin-top:6px;display:${b.cameraModel && !settings.cameraModels.includes(b.cameraModel) ? 'block' : 'none'}"  >
           </div>
           <div class="form-group">
             <label>ทะเบียนรถ</label>
@@ -725,7 +756,7 @@ async function saveEditBooking(refCode) {
     name: document.getElementById("ed_name").value,
     phone: document.getElementById("ed_phone").value,
     email: document.getElementById("ed_email").value,
-    cameraModel: document.getElementById("ed_cameraModel").value,
+    cameraModel: document.getElementById("ed_cameraModel").value === "__other" ? document.getElementById("ed_cameraModelCustom").value : document.getElementById("ed_cameraModel").value,
     licensePlate: document.getElementById("ed_licensePlate").value,
     carBrand: document.getElementById("ed_carBrand").value,
     carModel: document.getElementById("ed_carModel").value,

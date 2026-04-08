@@ -34,7 +34,7 @@ const DEFAULT_SETTINGS = {
   cameraModels: ["DDPAI Mini5","DDPAI Mini3","DDPAI Mola N3","DDPAI Mola N5","DDPAI Z50","DDPAI Z40","DDPAI X5 Pro"],
 };
 
-const CHANNELS = ["Shopee", "Lazada", "TikTok", "NocNoc", "Shopify", "หน้าร้าน"];
+const CHANNELS = ["Shopee", "Lazada", "TikTok", "Shopify", "หน้าร้าน"];
 const CAR_TYPES = ["รถญี่ปุ่น / ทั่วไป (Honda, Toyota ฯลฯ)", "รถยุโรป / รถ EV"];
 const INSTALL_TYPES = ["1. หน้า","2. หน้า-หลัง / 4 ประตู","3. หน้า-หลัง / Hatchback","4. หน้า-หลัง / SUV","5. หน้า-หลัง / รถตู้"];
 
