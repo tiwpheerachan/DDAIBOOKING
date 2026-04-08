@@ -160,6 +160,17 @@ body {
   font-weight: 500;
 }
 
+/* ---- Chart Container ---- */
+.chart-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.chart-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 /* ---- Dashboard Charts ---- */
 .dash-row {
   display: grid;

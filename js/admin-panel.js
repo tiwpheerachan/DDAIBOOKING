@@ -53,6 +53,7 @@ function renderTabs() {
 }
 
 function switchTab(key) {
+  if (activeTab === "dashboard" && key !== "dashboard") _destroyAllCharts();
   activeTab = key;
   renderTabs();
   renderPage();
@@ -168,11 +169,11 @@ function renderPage() {
         <div class="dash-row">
           <div class="card dash-chart-wide">
             <div class="card-header"><h3>แนวโน้มการจอง 30 วัน</h3></div>
-            <canvas id="chartTrend" height="220"></canvas>
+            <div class="chart-wrap" style="height:220px"><canvas id="chartTrend"></canvas></div>
           </div>
           <div class="card dash-chart-sm">
             <div class="card-header"><h3>สถานะการจอง</h3></div>
-            <canvas id="chartStatus" height="220"></canvas>
+            <div class="chart-wrap" style="height:200px"><canvas id="chartStatus"></canvas></div>
             <div class="dash-status-list">
               <div><span class="dash-dot" style="background:#eab308"></span> รอยืนยัน ${pendingCount}</div>
               <div><span class="dash-dot" style="background:#22c55e"></span> ยืนยันแล้ว ${confirmedCount}</div>
@@ -186,11 +187,11 @@ function renderPage() {
         <div class="dash-row">
           <div class="card dash-chart-half">
             <div class="card-header"><h3>ช่องทางการซื้อ</h3></div>
-            <canvas id="chartChannel" height="200"></canvas>
+            <div class="chart-wrap" style="height:200px"><canvas id="chartChannel"></canvas></div>
           </div>
           <div class="card dash-chart-half">
             <div class="card-header"><h3>รุ่นกล้องยอดนิยม</h3></div>
-            <canvas id="chartCamera" height="200"></canvas>
+            <div class="chart-wrap" style="height:200px"><canvas id="chartCamera"></canvas></div>
           </div>
         </div>
 
@@ -198,7 +199,7 @@ function renderPage() {
         <div class="dash-row dash-row-3">
           <div class="card">
             <div class="card-header"><h3>ประเภทการติดตั้ง</h3></div>
-            <canvas id="chartInstall" height="180"></canvas>
+            <div class="chart-wrap" style="height:180px"><canvas id="chartInstall"></canvas></div>
           </div>
           <div class="card">
             <div class="card-header"><h3>เวลายอดนิยม</h3></div>
@@ -1113,64 +1114,75 @@ function renderActionBtns(b) {
 // ---- Dashboard Charts ----
 
 const CHART_COLORS = ['#f97316','#3b82f6','#22c55e','#8b5cf6','#ec4899','#14b8a6','#eab308','#ef4444'];
+const _charts = {};
+
+function _destroyAllCharts() {
+  Object.keys(_charts).forEach(k => { if (_charts[k]) { _charts[k].destroy(); _charts[k] = null; } });
+}
 
 function _renderDashCharts(trend, pending, confirmed, completed, cancelled, channels, cameras, installs) {
-  // Destroy existing charts
-  Chart.helpers.each(Chart.instances, (c) => c.destroy());
+  _destroyAllCharts();
 
-  const baseOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+  const noAnim = { duration: 0 };
+  const baseOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: noAnim,
+    transitions: { active: { animation: { duration: 0 } } },
+    plugins: { legend: { display: false } }
+  };
 
-  // 1. Booking Trend (Line)
+  // 1. Booking Trend
   const trendCtx = document.getElementById("chartTrend");
-  if (trendCtx) new Chart(trendCtx, {
+  if (trendCtx) _charts.trend = new Chart(trendCtx, {
     type: "line",
     data: {
       labels: trend.map(t => t.label),
-      datasets: [{ data: trend.map(t => t.count), borderColor: "#f97316", backgroundColor: "rgba(249,115,22,0.1)", fill: true, tension: 0.3, pointRadius: 2, pointHoverRadius: 5, borderWidth: 2 }]
+      datasets: [{ data: trend.map(t => t.count), borderColor: "#f97316", backgroundColor: "rgba(249,115,22,0.08)", fill: true, tension: 0.35, pointRadius: 3, pointBackgroundColor: "#f97316", pointHoverRadius: 6, borderWidth: 2.5 }]
     },
-    options: { ...baseOpts, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { ticks: { maxTicksLimit: 10, font: { size: 10 } } } } }
+    options: { ...baseOpts, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: "rgba(0,0,0,0.04)" } }, x: { ticks: { maxTicksLimit: 10, font: { size: 10 } }, grid: { display: false } } } }
   });
 
-  // 2. Status Pie (Doughnut)
+  // 2. Status Doughnut
   const statusCtx = document.getElementById("chartStatus");
-  if (statusCtx) new Chart(statusCtx, {
+  if (statusCtx) _charts.status = new Chart(statusCtx, {
     type: "doughnut",
     data: {
       labels: ["รอยืนยัน","ยืนยันแล้ว","เสร็จสิ้น","ยกเลิก"],
-      datasets: [{ data: [pending, confirmed, completed, cancelled], backgroundColor: ["#eab308","#22c55e","#3b82f6","#ef4444"], borderWidth: 0 }]
+      datasets: [{ data: [pending, confirmed, completed, cancelled], backgroundColor: ["#eab308","#22c55e","#3b82f6","#ef4444"], borderWidth: 3, borderColor: "#fff" }]
     },
-    options: { ...baseOpts, cutout: "65%", plugins: { legend: { display: false } } }
+    options: { ...baseOpts, cutout: "65%" }
   });
 
-  // 3. Channel (Bar horizontal)
+  // 3. Channel Bar
   const chCtx = document.getElementById("chartChannel");
-  if (chCtx && channels.length > 0) new Chart(chCtx, {
+  if (chCtx && channels.length > 0) _charts.channel = new Chart(chCtx, {
     type: "bar",
     data: {
       labels: channels.map(c => c[0] || "ไม่ระบุ"),
-      datasets: [{ data: channels.map(c => c[1]), backgroundColor: CHART_COLORS.slice(0, channels.length), borderRadius: 6, borderSkipped: false }]
+      datasets: [{ data: channels.map(c => c[1]), backgroundColor: CHART_COLORS.slice(0, channels.length), borderRadius: 6, borderSkipped: false, maxBarThickness: 32 }]
     },
-    options: { ...baseOpts, indexAxis: "y", scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    options: { ...baseOpts, indexAxis: "y", scales: { x: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: "rgba(0,0,0,0.04)" } }, y: { grid: { display: false } } } }
   });
 
-  // 4. Camera Model (Bar)
+  // 4. Camera Bar
   const camCtx = document.getElementById("chartCamera");
-  if (camCtx && cameras.length > 0) new Chart(camCtx, {
+  if (camCtx && cameras.length > 0) _charts.camera = new Chart(camCtx, {
     type: "bar",
     data: {
-      labels: cameras.map(c => c[0] || "ไม่ระบุ"),
-      datasets: [{ data: cameras.map(c => c[1]), backgroundColor: CHART_COLORS.slice(0, cameras.length), borderRadius: 6, borderSkipped: false }]
+      labels: cameras.map(c => (c[0] || "ไม่ระบุ").replace("DDPAI ", "")),
+      datasets: [{ data: cameras.map(c => c[1]), backgroundColor: CHART_COLORS.slice(0, cameras.length), borderRadius: 6, borderSkipped: false, maxBarThickness: 36 }]
     },
-    options: { ...baseOpts, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { ticks: { font: { size: 10 } } } } }
+    options: { ...baseOpts, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: "rgba(0,0,0,0.04)" } }, x: { ticks: { font: { size: 10 } }, grid: { display: false } } } }
   });
 
-  // 5. Install Type (Doughnut)
+  // 5. Install Doughnut
   const instCtx = document.getElementById("chartInstall");
-  if (instCtx && installs.length > 0) new Chart(instCtx, {
+  if (instCtx && installs.length > 0) _charts.install = new Chart(instCtx, {
     type: "doughnut",
     data: {
-      labels: installs.map(i => i[0] || "ไม่ระบุ"),
-      datasets: [{ data: installs.map(i => i[1]), backgroundColor: CHART_COLORS.slice(0, installs.length), borderWidth: 0 }]
+      labels: installs.map(i => (i[0] || "ไม่ระบุ").replace(/^\d+\.\s*/, "")),
+      datasets: [{ data: installs.map(i => i[1]), backgroundColor: CHART_COLORS.slice(0, installs.length), borderWidth: 3, borderColor: "#fff" }]
     },
     options: { ...baseOpts, cutout: "55%", plugins: { legend: { display: true, position: "bottom", labels: { boxWidth: 12, padding: 8, font: { size: 11 } } } } }
   });

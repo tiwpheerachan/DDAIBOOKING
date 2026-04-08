@@ -329,14 +329,19 @@ async function _refreshAll() {
   }
 }
 
-/** Trigger re-render on whichever page is active */
+/** Trigger re-render (debounced to prevent rapid re-renders from Realtime) */
+let _renderTimer = null;
 function _triggerRender() {
-  try {
-    if (typeof renderPage === "function") renderPage();
-    else if (typeof render === "function") render();
-  } catch (e) {
-    console.error("Render error:", e);
-  }
+  if (_renderTimer) clearTimeout(_renderTimer);
+  _renderTimer = setTimeout(() => {
+    _renderTimer = null;
+    try {
+      if (typeof renderPage === "function") renderPage();
+      else if (typeof render === "function") render();
+    } catch (e) {
+      console.error("Render error:", e);
+    }
+  }, 300);
 }
 
 /** Setup Supabase Realtime subscription */
