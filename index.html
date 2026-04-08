@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DDPAI — จองติดตั้งกล้องติดรถยนต์</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/user.css">
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <img src="https://bsta.sa/images/feature_variant/5/ddbai-400x120-logo.png" alt="DDPAI" class="navbar-logo-img">
+      <div class="navbar-divider"></div>
+      <div class="navbar-text">
+        <div class="subtitle">ระบบจองติดตั้งกล้องติดรถยนต์</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <div class="hero fade-in">
+    <div class="hero-badge">Susco Pinklao</div>
+    <h1>จองคิวติดตั้งกล้อง <span class="highlight">DDPAI</span></h1>
+    <p>เลือกวันเวลาที่สะดวก กรอกข้อมูลรถยนต์ และยืนยันนัดหมายเพื่อเข้ารับบริการ</p>
+    <button class="hero-check-btn" onclick="checkMode=true;checkedBooking=null;render()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      ตรวจสอบสถานะการจอง
+    </button>
+  </div>
+
+  <!-- Step Indicator -->
+  <div class="steps-bar" id="stepsBar"></div>
+
+  <!-- Main Content -->
+  <div id="mainContent"></div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-brand">
+      <img src="https://bsta.sa/images/feature_variant/5/ddbai-400x120-logo.png" alt="DDPAI" class="footer-logo">
+    </div>
+    <p class="footer-text">DDPAI Thailand — Powered by Susco Pinklao</p>
+    <p class="footer-copy">&copy; 2026 DDPAI. All rights reserved.</p>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/shared-data.js"></script>
+  <script src="js/user-booking.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "ddpai-booking-system",
+  "version": "1.0.0",
+  "description": "DDPAI Dashcam Installation Booking System — ระบบจองติดตั้งกล้องติดรถยนต์ DDPAI",
+  "scripts": {
+    "dev": "npx live-server --port=3000 --open=/index.html",
+    "admin": "npx live-server --port=3000 --open=/admin.html"
+  },
+  "keywords": ["ddpai", "booking", "dashcam", "installation"],
+  "license": "MIT"
+}
