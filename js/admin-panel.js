@@ -75,30 +75,66 @@ function renderPage() {
   const today = todayThai();
 
   // =============================================
-  // DASHBOARD
+  // DASHBOARD — Analytics
   // =============================================
   if (activeTab === "dashboard") {
-    const todayBookings = bookings.filter(
-      (b) => b.date === today && b.status !== "cancelled"
-    );
-    const pendingCount = bookings.filter((b) => b.status === "pending").length;
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-    const weekBookings = bookings.filter(
-      (b) => new Date(b.date) >= weekStart && b.status !== "cancelled"
-    );
-    const activeTotal = bookings.filter(
-      (b) => b.status !== "cancelled"
-    ).length;
+    const todayBk = bookings.filter(b => b.date === today && b.status !== "cancelled");
+    const ws = nowThai(); ws.setDate(ws.getDate() - ws.getDay());
+    const weekStart = formatDate(ws);
+    const weekBk = bookings.filter(b => b.date >= weekStart && b.status !== "cancelled");
+    const pendingCount = bookings.filter(b => b.status === "pending").length;
+    const confirmedCount = bookings.filter(b => b.status === "confirmed").length;
+    const completedCount = bookings.filter(b => b.status === "completed").length;
+    const cancelledCount = bookings.filter(b => b.status === "cancelled").length;
+    const activeTotal = bookings.filter(b => b.status !== "cancelled").length;
+    const cancelRate = bookings.length > 0 ? Math.round((cancelledCount / bookings.length) * 100) : 0;
+
+    // Last 30 days booking trend
+    const last30 = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = nowThai(); d.setDate(d.getDate() - i);
+      const ds = formatDate(d);
+      last30.push({ date: ds, label: d.getDate() + "/" + (d.getMonth()+1), count: bookings.filter(b => b.date === ds && b.status !== "cancelled").length });
+    }
+
+    // Top camera models
+    const camCount = {};
+    bookings.filter(b => b.status !== "cancelled").forEach(b => { camCount[b.cameraModel] = (camCount[b.cameraModel]||0) + 1; });
+    const topCams = Object.entries(camCount).sort((a,b) => b[1]-a[1]).slice(0, 6);
+
+    // Channel distribution
+    const chCount = {};
+    bookings.filter(b => b.status !== "cancelled").forEach(b => { chCount[b.channel] = (chCount[b.channel]||0) + 1; });
+    const topChannels = Object.entries(chCount).sort((a,b) => b[1]-a[1]);
+
+    // Popular time slots
+    const timeCount = {};
+    bookings.filter(b => b.status !== "cancelled").forEach(b => { timeCount[b.time] = (timeCount[b.time]||0) + 1; });
+    const topTimes = Object.entries(timeCount).sort((a,b) => b[1]-a[1]).slice(0, 5);
+
+    // Frequent customers
+    const custCount = {};
+    bookings.filter(b => b.status !== "cancelled").forEach(b => {
+      const key = b.phone || b.name;
+      if (!custCount[key]) custCount[key] = { name: b.name, phone: b.phone, count: 0 };
+      custCount[key].count++;
+    });
+    const topCustomers = Object.values(custCount).sort((a,b) => b.count - a.count).slice(0, 5);
+
+    // Install type distribution
+    const instCount = {};
+    bookings.filter(b => b.status !== "cancelled").forEach(b => { instCount[b.installType] = (instCount[b.installType]||0) + 1; });
+    const topInstall = Object.entries(instCount).sort((a,b) => b[1]-a[1]);
 
     page.innerHTML = `
       <div class="fade-in">
+        <!-- KPI Cards -->
         <div class="stats-grid">
           <div class="stat-card stat-orange">
             <div class="stat-icon">${ICONS.schedule}</div>
             <div class="stat-body">
               <div class="stat-label">จองวันนี้</div>
-              <div class="stat-value">${todayBookings.length}</div>
+              <div class="stat-value">${todayBk.length}</div>
               <div class="stat-sub">${thaiDate(today)}</div>
             </div>
           </div>
@@ -106,16 +142,16 @@ function renderPage() {
             <div class="stat-icon">${ICONS.bookings}</div>
             <div class="stat-body">
               <div class="stat-label">สัปดาห์นี้</div>
-              <div class="stat-value">${weekBookings.length}</div>
+              <div class="stat-value">${weekBk.length}</div>
               <div class="stat-sub">รายการ</div>
             </div>
           </div>
           <div class="stat-card stat-purple">
             <div class="stat-icon">${ICONS.dashboard}</div>
             <div class="stat-body">
-              <div class="stat-label">ทั้งหมด</div>
+              <div class="stat-label">ทั้งหมด (active)</div>
               <div class="stat-value">${activeTotal}</div>
-              <div class="stat-sub">รายการที่ active</div>
+              <div class="stat-sub">จากทั้งหมด ${bookings.length} รายการ</div>
             </div>
           </div>
           <div class="stat-card stat-yellow">
@@ -128,6 +164,73 @@ function renderPage() {
           </div>
         </div>
 
+        <!-- Charts Row 1: Trend + Status Pie -->
+        <div class="dash-row">
+          <div class="card dash-chart-wide">
+            <div class="card-header"><h3>แนวโน้มการจอง 30 วัน</h3></div>
+            <canvas id="chartTrend" height="220"></canvas>
+          </div>
+          <div class="card dash-chart-sm">
+            <div class="card-header"><h3>สถานะการจอง</h3></div>
+            <canvas id="chartStatus" height="220"></canvas>
+            <div class="dash-status-list">
+              <div><span class="dash-dot" style="background:#eab308"></span> รอยืนยัน ${pendingCount}</div>
+              <div><span class="dash-dot" style="background:#22c55e"></span> ยืนยันแล้ว ${confirmedCount}</div>
+              <div><span class="dash-dot" style="background:#3b82f6"></span> เสร็จสิ้น ${completedCount}</div>
+              <div><span class="dash-dot" style="background:#ef4444"></span> ยกเลิก ${cancelledCount} (${cancelRate}%)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Row 2: Channel + Camera Model -->
+        <div class="dash-row">
+          <div class="card dash-chart-half">
+            <div class="card-header"><h3>ช่องทางการซื้อ</h3></div>
+            <canvas id="chartChannel" height="200"></canvas>
+          </div>
+          <div class="card dash-chart-half">
+            <div class="card-header"><h3>รุ่นกล้องยอดนิยม</h3></div>
+            <canvas id="chartCamera" height="200"></canvas>
+          </div>
+        </div>
+
+        <!-- Row 3: Install Type + Popular Times + Top Customers -->
+        <div class="dash-row dash-row-3">
+          <div class="card">
+            <div class="card-header"><h3>ประเภทการติดตั้ง</h3></div>
+            <canvas id="chartInstall" height="180"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>เวลายอดนิยม</h3></div>
+            <div class="dash-rank-list">
+              ${topTimes.length === 0 ? '<div class="empty-state"><p>ยังไม่มีข้อมูล</p></div>' : topTimes.map((t, i) => `
+                <div class="dash-rank-item">
+                  <div class="dash-rank-num">${i+1}</div>
+                  <div class="dash-rank-label">${t[0]} น.</div>
+                  <div class="dash-rank-bar"><div style="width:${topTimes[0][1] > 0 ? Math.round(t[1]/topTimes[0][1]*100) : 0}%;background:var(--orange-500)"></div></div>
+                  <div class="dash-rank-val">${t[1]}</div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>ลูกค้าที่ใช้บ่อย</h3></div>
+            <div class="dash-rank-list">
+              ${topCustomers.length === 0 ? '<div class="empty-state"><p>ยังไม่มีข้อมูล</p></div>' : topCustomers.map((c, i) => `
+                <div class="dash-rank-item">
+                  <div class="dash-rank-num">${i+1}</div>
+                  <div class="dash-rank-label">
+                    <div style="font-weight:600;color:var(--slate-800)">${c.name}</div>
+                    <div style="font-size:11px;color:var(--slate-400)">${c.phone}</div>
+                  </div>
+                  <div class="dash-rank-val">${c.count} ครั้ง</div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        </div>
+
+        <!-- Today Schedule -->
         <div class="card">
           <div class="card-header">
             <div>
@@ -139,17 +242,16 @@ function renderPage() {
               จองให้ลูกค้า
             </button>
           </div>
-          ${
-            todayBookings.length === 0
-              ? '<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--slate-300)" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><p>ไม่มีการจองในวันนี้</p></div>'
-              : todayBookings
-                  .sort((a, b) => a.time.localeCompare(b.time))
-                  .map((b) => renderScheduleRow(b))
-                  .join("")
+          ${todayBk.length === 0
+            ? '<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--slate-300)" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><p>ไม่มีการจองในวันนี้</p></div>'
+            : todayBk.sort((a,b) => a.time.localeCompare(b.time)).map(b => renderScheduleRow(b)).join("")
           }
         </div>
       </div>
     `;
+
+    // Render Charts after DOM is ready
+    setTimeout(() => _renderDashCharts(last30, pendingCount, confirmedCount, completedCount, cancelledCount, topChannels, topCams, topInstall), 50);
   }
 
   // =============================================
@@ -1006,6 +1108,72 @@ function renderActionBtns(b) {
       ยกเลิก</button>`;
   html += "</div>";
   return html;
+}
+
+// ---- Dashboard Charts ----
+
+const CHART_COLORS = ['#f97316','#3b82f6','#22c55e','#8b5cf6','#ec4899','#14b8a6','#eab308','#ef4444'];
+
+function _renderDashCharts(trend, pending, confirmed, completed, cancelled, channels, cameras, installs) {
+  // Destroy existing charts
+  Chart.helpers.each(Chart.instances, (c) => c.destroy());
+
+  const baseOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+
+  // 1. Booking Trend (Line)
+  const trendCtx = document.getElementById("chartTrend");
+  if (trendCtx) new Chart(trendCtx, {
+    type: "line",
+    data: {
+      labels: trend.map(t => t.label),
+      datasets: [{ data: trend.map(t => t.count), borderColor: "#f97316", backgroundColor: "rgba(249,115,22,0.1)", fill: true, tension: 0.3, pointRadius: 2, pointHoverRadius: 5, borderWidth: 2 }]
+    },
+    options: { ...baseOpts, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { ticks: { maxTicksLimit: 10, font: { size: 10 } } } } }
+  });
+
+  // 2. Status Pie (Doughnut)
+  const statusCtx = document.getElementById("chartStatus");
+  if (statusCtx) new Chart(statusCtx, {
+    type: "doughnut",
+    data: {
+      labels: ["รอยืนยัน","ยืนยันแล้ว","เสร็จสิ้น","ยกเลิก"],
+      datasets: [{ data: [pending, confirmed, completed, cancelled], backgroundColor: ["#eab308","#22c55e","#3b82f6","#ef4444"], borderWidth: 0 }]
+    },
+    options: { ...baseOpts, cutout: "65%", plugins: { legend: { display: false } } }
+  });
+
+  // 3. Channel (Bar horizontal)
+  const chCtx = document.getElementById("chartChannel");
+  if (chCtx && channels.length > 0) new Chart(chCtx, {
+    type: "bar",
+    data: {
+      labels: channels.map(c => c[0] || "ไม่ระบุ"),
+      datasets: [{ data: channels.map(c => c[1]), backgroundColor: CHART_COLORS.slice(0, channels.length), borderRadius: 6, borderSkipped: false }]
+    },
+    options: { ...baseOpts, indexAxis: "y", scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+  });
+
+  // 4. Camera Model (Bar)
+  const camCtx = document.getElementById("chartCamera");
+  if (camCtx && cameras.length > 0) new Chart(camCtx, {
+    type: "bar",
+    data: {
+      labels: cameras.map(c => c[0] || "ไม่ระบุ"),
+      datasets: [{ data: cameras.map(c => c[1]), backgroundColor: CHART_COLORS.slice(0, cameras.length), borderRadius: 6, borderSkipped: false }]
+    },
+    options: { ...baseOpts, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { ticks: { font: { size: 10 } } } } }
+  });
+
+  // 5. Install Type (Doughnut)
+  const instCtx = document.getElementById("chartInstall");
+  if (instCtx && installs.length > 0) new Chart(instCtx, {
+    type: "doughnut",
+    data: {
+      labels: installs.map(i => i[0] || "ไม่ระบุ"),
+      datasets: [{ data: installs.map(i => i[1]), backgroundColor: CHART_COLORS.slice(0, installs.length), borderWidth: 0 }]
+    },
+    options: { ...baseOpts, cutout: "55%", plugins: { legend: { display: true, position: "bottom", labels: { boxWidth: 12, padding: 8, font: { size: 11 } } } } }
+  });
 }
 
 function renderBookingLogs(bookingId) {

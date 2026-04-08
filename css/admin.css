@@ -160,6 +160,114 @@ body {
   font-weight: 500;
 }
 
+/* ---- Dashboard Charts ---- */
+.dash-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.dash-row-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.dash-chart-wide { grid-column: span 1; }
+.dash-chart-sm { grid-column: span 1; }
+.dash-chart-half { grid-column: span 1; }
+
+.dash-row:first-of-type {
+  grid-template-columns: 2fr 1fr;
+}
+
+.dash-status-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--slate-600);
+}
+
+.dash-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* Rank List */
+.dash-rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dash-rank-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dash-rank-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--slate-100);
+  color: var(--slate-600);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.dash-rank-label {
+  flex: 1;
+  font-size: 13px;
+  color: var(--slate-700);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-rank-bar {
+  width: 60px;
+  height: 6px;
+  background: var(--slate-100);
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.dash-rank-bar > div {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s;
+}
+
+.dash-rank-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--slate-800);
+  min-width: 28px;
+  text-align: right;
+}
+
+@media (max-width: 1024px) {
+  .dash-row { grid-template-columns: 1fr; }
+  .dash-row:first-of-type { grid-template-columns: 1fr; }
+  .dash-row-3 { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 640px) {
+  .dash-row-3 { grid-template-columns: 1fr; }
+}
+
 /* ---- Schedule Rows ---- */
 .schedule-row {
   display: flex;
