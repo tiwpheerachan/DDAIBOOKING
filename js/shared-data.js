@@ -72,14 +72,28 @@ function formatDate(d) {
   return `${y}-${m}-${day}`;
 }
 
-/** Get current date/time in Thailand timezone */
+/** Get current date/time in Thailand timezone (reliable method) */
 function nowThai() {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
+  // Use Intl.DateTimeFormat to get exact Thai time parts
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false,
+  });
+  const parts = {};
+  fmt.formatToParts(new Date()).forEach(p => { parts[p.type] = p.value; });
+  return new Date(
+    parseInt(parts.year), parseInt(parts.month) - 1, parseInt(parts.day),
+    parseInt(parts.hour), parseInt(parts.minute), parseInt(parts.second)
+  );
 }
 
-function todayThai() { return formatDate(nowThai()); }
+function todayThai() {
+  const n = nowThai();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`;
+}
 
-/** Current time in minutes since midnight (Thailand) */
 function nowMinutesThai() {
   const n = nowThai();
   return n.getHours() * 60 + n.getMinutes();

@@ -96,7 +96,7 @@ function buildCalendar() {
   for (let d = 1; d <= daysInMonth; d++) {
     const dateObj = new Date(calYear, calMonth, d);
     const dateStr = formatDate(dateObj);
-    const isPast = dateObj <= today;
+    const isPast = dateObj < today;
     const isTooFar = dateObj > maxDate;
     const holiday = isHoliday(dateStr);
     const avail = (!isPast && !isTooFar && !holiday) ? getAvailableSlots(dateStr) : [];
