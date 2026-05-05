@@ -23,6 +23,8 @@ let schedViewSlot = null; // booking id for detail view
 let schedEditMode = false;
 let schedSavingEdit = false;
 let schedFilterStatus = "all"; // all | booked | free | blocked | pending | confirmed | completed
+let schedSearch = "";
+let bookingSearch = "";
 
 // SVG icon helper
 const ICONS = {
@@ -368,25 +370,29 @@ function renderPage() {
             <div class="card-header">
               <div>
                 <h3>ตารางรายวัน</h3>
-                <p>${thaiDate(schedSelectedDate)}</p>
+                <p>${schedSearch ? 'ผลการค้นหา' : thaiDate(schedSelectedDate)}</p>
               </div>
               <button class="btn btn-orange btn-sm" onclick="openModal()">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
                 จองให้ลูกค้า
               </button>
             </div>
-            ${dayIsHoliday
-              ? '<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--red-500)" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M9 15l6-6M9 9l6 6"/></svg><p>วันหยุด — ไม่เปิดให้บริการ</p></div>'
-              : `
-              <div class="sched-filters">
-                <button class="sched-filter ${schedFilterStatus==='all'?'active':''}" onclick="schedFilterStatus='all';renderPage()">ทั้งหมด <span class="count">${filterCounts.all}</span></button>
-                <button class="sched-filter ${schedFilterStatus==='pending'?'active':''}" onclick="schedFilterStatus='pending';renderPage()">รอยืนยัน <span class="count">${filterCounts.pending}</span></button>
-                <button class="sched-filter ${schedFilterStatus==='confirmed'?'active':''}" onclick="schedFilterStatus='confirmed';renderPage()">ยืนยัน <span class="count">${filterCounts.confirmed}</span></button>
-                <button class="sched-filter ${schedFilterStatus==='completed'?'active':''}" onclick="schedFilterStatus='completed';renderPage()">เสร็จ <span class="count">${filterCounts.completed}</span></button>
-                <button class="sched-filter ${schedFilterStatus==='free'?'active':''}" onclick="schedFilterStatus='free';renderPage()">ว่าง <span class="count">${filterCounts.free}</span></button>
-              </div>
-              ${renderSchedTimeline(allSlots, bookings, blocked, isToday, nowMin, nowLabel)}
-              `}
+            ${renderSearchInput("schedSearchInput", schedSearch, "ค้นหาชื่อลูกค้า / รหัสจอง / เบอร์โทร / ทะเบียน", "setSchedSearch", "clearSchedSearch")}
+            ${schedSearch
+              ? renderSearchResults(schedSearch, bookings, "selectSearchResultSched")
+              : (dayIsHoliday
+                ? '<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--red-500)" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M9 15l6-6M9 9l6 6"/></svg><p>วันหยุด — ไม่เปิดให้บริการ</p></div>'
+                : `
+                <div class="sched-filters">
+                  <button class="sched-filter ${schedFilterStatus==='all'?'active':''}" onclick="schedFilterStatus='all';renderPage()">ทั้งหมด <span class="count">${filterCounts.all}</span></button>
+                  <button class="sched-filter ${schedFilterStatus==='pending'?'active':''}" onclick="schedFilterStatus='pending';renderPage()">รอยืนยัน <span class="count">${filterCounts.pending}</span></button>
+                  <button class="sched-filter ${schedFilterStatus==='confirmed'?'active':''}" onclick="schedFilterStatus='confirmed';renderPage()">ยืนยัน <span class="count">${filterCounts.confirmed}</span></button>
+                  <button class="sched-filter ${schedFilterStatus==='completed'?'active':''}" onclick="schedFilterStatus='completed';renderPage()">เสร็จ <span class="count">${filterCounts.completed}</span></button>
+                  <button class="sched-filter ${schedFilterStatus==='free'?'active':''}" onclick="schedFilterStatus='free';renderPage()">ว่าง <span class="count">${filterCounts.free}</span></button>
+                </div>
+                ${renderSchedTimeline(allSlots, bookings, blocked, isToday, nowMin, nowLabel)}
+                `)
+            }
           </div>
         </div>
       </div>
@@ -424,26 +430,31 @@ function renderPage() {
                   .join("")}
               </div>
             </div>
-            ${renderBookingCalendar(bookings)}
-            <!-- Day Bookings List -->
-            <div class="bk-day-header">
-              <div class="bk-day-title">${thaiDate(bookingSelectedDate)}</div>
-              <div class="bk-day-count">${dayBookings.length} รายการ</div>
-            </div>
-            <div class="bk-day-list">
-              ${dayBookings.length === 0
-                ? '<div class="bk-day-empty">ไม่มีการจองในวันนี้</div>'
-                : dayBookings.sort((a,b) => a.time.localeCompare(b.time)).map(b => `
-                  <div class="bk-item ${bookingSelectedId === b.id ? 'active' : ''} bk-item-${b.status}" onclick="bookingSelectedId=${b.id};renderPage()">
-                    <div class="bk-item-time">${b.time}</div>
-                    <div class="bk-item-body">
-                      <div class="bk-item-name">${b.name}</div>
-                      <div class="bk-item-detail">${b.cameraModel} | ${b.licensePlate}</div>
-                    </div>
-                    <span class="badge badge-${b.status}">${STATUS_MAP[b.status]?.label}</span>
-                  </div>
-                `).join("")}
-            </div>
+            ${renderSearchInput("bookingSearchInput", bookingSearch, "ค้นหาชื่อลูกค้า / รหัสจอง / เบอร์โทร / ทะเบียน", "setBookingSearch", "clearBookingSearch")}
+            ${bookingSearch
+              ? renderSearchResults(bookingSearch, bookings, "selectSearchResultBooking")
+              : `
+                ${renderBookingCalendar(bookings)}
+                <!-- Day Bookings List -->
+                <div class="bk-day-header">
+                  <div class="bk-day-title">${thaiDate(bookingSelectedDate)}</div>
+                  <div class="bk-day-count">${dayBookings.length} รายการ</div>
+                </div>
+                <div class="bk-day-list">
+                  ${dayBookings.length === 0
+                    ? '<div class="bk-day-empty">ไม่มีการจองในวันนี้</div>'
+                    : dayBookings.sort((a,b) => a.time.localeCompare(b.time)).map(b => `
+                      <div class="bk-item ${bookingSelectedId === b.id ? 'active' : ''} bk-item-${b.status}" onclick="bookingSelectedId=${b.id};renderPage()">
+                        <div class="bk-item-time">${b.time}</div>
+                        <div class="bk-item-body">
+                          <div class="bk-item-name">${_esc(b.name)}</div>
+                          <div class="bk-item-detail">${_esc(b.cameraModel)} · ${_esc(b.licensePlate)}</div>
+                        </div>
+                        <span class="badge badge-${b.status}">${STATUS_MAP[b.status]?.label}</span>
+                      </div>
+                    `).join("")}
+                </div>
+              `}
           </div>
         </div>
 
@@ -837,16 +848,19 @@ function renderBookingCalendar(bookings) {
   const daysInMonth = new Date(bookingCalYear, bookingCalMonth + 1, 0).getDate();
   const todayStr = todayThai();
 
+  const MAX_CHIPS = 2;
+
   let cells = '';
   for (let i = 0; i < firstDay; i++) {
     cells += '<div class="bcal-cell empty"></div>';
   }
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${bookingCalYear}-${String(bookingCalMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const dayBookings = bookings.filter(b => b.date === dateStr && b.status !== "cancelled");
-    const filteredDay = filterStatus === "all"
-      ? dayBookings
-      : bookings.filter(b => b.date === dateStr && b.status === filterStatus);
+    const dayBookings = bookings
+      .filter(b => b.date === dateStr && b.status !== "cancelled")
+      .filter(b => filterStatus === "all" || b.status === filterStatus)
+      .sort((a, b) => a.time.localeCompare(b.time));
+
     const isToday = dateStr === todayStr;
     const isSelected = dateStr === bookingSelectedDate;
     const isSunday = new Date(bookingCalYear, bookingCalMonth, d).getDay() === 0;
@@ -857,27 +871,37 @@ function renderBookingCalendar(bookings) {
     if (isToday) cls += ' today';
     if (isSunday) cls += ' sunday';
     if (hol) cls += ' holiday';
+    if (dayBookings.length > 0) cls += ' has-bookings';
 
-    // Dot indicators for booking status
-    const hasPending = dayBookings.some(b => b.status === 'pending');
-    const hasConfirmed = dayBookings.some(b => b.status === 'confirmed');
-    const hasCompleted = dayBookings.some(b => b.status === 'completed');
+    // Header line: number + count badge
+    const headerHtml = `
+      <div class="bcal-cell-head">
+        <span class="bcal-num">${d}</span>
+        ${dayBookings.length > 0 ? `<span class="bcal-count-badge">${dayBookings.length}</span>` : ''}
+      </div>
+    `;
 
-    let dots = '';
+    // Booking chips inside cell
+    let chipsHtml = '';
     if (dayBookings.length > 0) {
-      dots = '<div class="bcal-dots">';
-      if (hasPending) dots += '<span class="bcal-dot pending"></span>';
-      if (hasConfirmed) dots += '<span class="bcal-dot confirmed"></span>';
-      if (hasCompleted) dots += '<span class="bcal-dot completed"></span>';
-      dots += '</div>';
+      const visible = dayBookings.slice(0, MAX_CHIPS);
+      const more = dayBookings.length - visible.length;
+      chipsHtml += '<div class="bcal-chips">';
+      visible.forEach(b => {
+        chipsHtml += `<div class="bcal-chip bcal-chip-${b.status}" onclick="event.stopPropagation();selectSearchResultBooking(${b.id})" title="${_esc(b.refCode || '#'+b.id)} · ${_esc(b.name)}">
+          <span class="bcal-chip-time">${b.time}</span>
+          <span class="bcal-chip-name">${_esc(b.name)}</span>
+        </div>`;
+      });
+      if (more > 0) {
+        chipsHtml += `<div class="bcal-chip-more">+${more}</div>`;
+      }
+      chipsHtml += '</div>';
     }
 
-    const count = filteredDay.length;
-
     cells += `<div class="${cls}" onclick="selectBookingDate('${dateStr}')">
-      <span class="bcal-num">${d}</span>
-      ${count > 0 ? `<span class="bcal-count">${count}</span>` : ''}
-      ${dots}
+      ${headerHtml}
+      ${chipsHtml}
     </div>`;
   }
 
@@ -897,11 +921,6 @@ function renderBookingCalendar(bookings) {
         <div class="bcal-hd">พ</div><div class="bcal-hd">พฤ</div><div class="bcal-hd">ศ</div><div class="bcal-hd">ส</div>
       </div>
       <div class="bcal-grid">${cells}</div>
-      <div class="bcal-legend">
-        <span><span class="bcal-legend-dot pending"></span> รอยืนยัน</span>
-        <span><span class="bcal-legend-dot confirmed"></span> ยืนยันแล้ว</span>
-        <span><span class="bcal-legend-dot completed"></span> เสร็จสิ้น</span>
-      </div>
     </div>
   `;
 }
@@ -1421,6 +1440,113 @@ async function submitModal() {
 
   await addBooking(data);
   closeModal();
+  renderPage();
+}
+
+// ============================================================
+// Search helpers
+// ============================================================
+
+function _matchesQuery(b, q) {
+  if (!q) return true;
+  const ql = q.toLowerCase();
+  return (
+    (b.refCode || "").toLowerCase().includes(ql) ||
+    (b.name || "").toLowerCase().includes(ql) ||
+    (b.phone || "").toLowerCase().includes(ql) ||
+    (b.licensePlate || "").toLowerCase().includes(ql) ||
+    (b.orderNumber || "").toLowerCase().includes(ql)
+  );
+}
+
+function _refocusSearch(id, value) {
+  setTimeout(() => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.focus();
+      try { el.setSelectionRange(value.length, value.length); } catch (e) {}
+    }
+  }, 0);
+}
+
+function setSchedSearch(value) {
+  schedSearch = value;
+  renderPage();
+  _refocusSearch("schedSearchInput", value);
+}
+
+function setBookingSearch(value) {
+  bookingSearch = value;
+  renderPage();
+  _refocusSearch("bookingSearchInput", value);
+}
+
+function clearSchedSearch() { schedSearch = ""; renderPage(); }
+function clearBookingSearch() { bookingSearch = ""; renderPage(); }
+
+function renderSearchInput(id, value, placeholder, onInputFn, onClearFn) {
+  const v = _esc(value);
+  return `
+    <div class="search-box">
+      <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="search" id="${id}" class="search-input" placeholder="${placeholder}" value="${v}" oninput="${onInputFn}(this.value)" autocomplete="off">
+      ${value ? `<button class="search-clear" onclick="${onClearFn}()" title="ล้าง"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>` : ''}
+    </div>
+  `;
+}
+
+function renderSearchResults(query, bookings, onSelect) {
+  const q = query.trim();
+  const matches = bookings
+    .filter(b => _matchesQuery(b, q))
+    .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))
+    .slice(0, 50);
+
+  if (matches.length === 0) {
+    return `<div class="search-empty">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <p>ไม่พบรายการที่ตรงกับ "${_esc(q)}"</p>
+    </div>`;
+  }
+
+  return `
+    <div class="search-results-header">พบ ${matches.length} รายการ</div>
+    <div class="search-results">
+      ${matches.map(b => `
+        <div class="sr-item sr-status-${b.status}" onclick="${onSelect}(${b.id})">
+          <div class="sr-time">
+            <div class="sr-time-h">${b.time}</div>
+            <div class="sr-time-d">${thaiDayShort(b.date)} ${b.date.slice(8,10)}/${b.date.slice(5,7)}</div>
+          </div>
+          <div class="sr-body">
+            <div class="sr-name">${_esc(b.name)}</div>
+            <div class="sr-meta">${_esc(b.refCode || '#'+b.id)} · ${_esc(b.phone)} · ${_esc(b.licensePlate)}</div>
+          </div>
+          <span class="badge badge-${b.status}" style="font-size:10px;padding:2px 8px">${STATUS_MAP[b.status]?.label || b.status}</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function selectSearchResultSched(id) {
+  const b = getBookings().find(x => x.id === id);
+  if (!b) return;
+  schedSelectedDate = b.date;
+  schedCalYear = parseInt(b.date.slice(0, 4));
+  schedCalMonth = parseInt(b.date.slice(5, 7)) - 1;
+  schedSearch = "";
+  openSchedDetail(id);
+}
+
+function selectSearchResultBooking(id) {
+  const b = getBookings().find(x => x.id === id);
+  if (!b) return;
+  bookingSelectedDate = b.date;
+  bookingCalYear = parseInt(b.date.slice(0, 4));
+  bookingCalMonth = parseInt(b.date.slice(5, 7)) - 1;
+  bookingSelectedId = id;
+  bookingSearch = "";
   renderPage();
 }
 
