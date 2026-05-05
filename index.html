@@ -13,24 +13,42 @@
 
   <!-- Navbar -->
   <nav class="navbar">
-    <div class="navbar-brand">
-      <img src="https://bsta.sa/images/feature_variant/5/ddbai-400x120-logo.png" alt="DDPAI" class="navbar-logo-img">
-      <div class="navbar-divider"></div>
-      <div class="navbar-text">
-        <div class="subtitle">ระบบจองติดตั้งกล้องติดรถยนต์</div>
+    <div class="navbar-inner">
+      <a class="navbar-brand" href="#" onclick="event.preventDefault();window.scrollTo({top:0,behavior:'smooth'})">
+        <img src="assets/ddpai-logo.png" alt="DDPAI" class="navbar-logo-img">
+      </a>
+      <div class="navbar-actions">
+        <a class="navbar-site-link" href="https://www.ddpai.com/" target="_blank" rel="noopener" title="เยี่ยมชม ddpai.com">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          <span class="navbar-link-label">ddpai.com</span>
+        </a>
+        <button class="navbar-check-btn" onclick="checkMode=true;checkedBooking=null;render();window.scrollTo({top:0,behavior:'smooth'})" title="ตรวจสอบการจอง">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <span class="navbar-link-label">ตรวจสอบการจอง</span>
+        </button>
       </div>
     </div>
   </nav>
 
   <!-- Hero -->
   <div class="hero fade-in">
-    <div class="hero-badge">Susco Pinklao</div>
-    <h1>จองคิวติดตั้งกล้อง <span class="highlight">DDPAI</span></h1>
-    <p>เลือกวันเวลาที่สะดวก กรอกข้อมูลรถยนต์ และยืนยันนัดหมายเพื่อเข้ารับบริการ</p>
-    <button class="hero-check-btn" onclick="checkMode=true;checkedBooking=null;render()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      ตรวจสอบสถานะการจอง
-    </button>
+    <div class="hero-bg" aria-hidden="true"></div>
+    <div class="hero-content">
+      <div class="hero-badge">Susco Pinklao · ปิ่นเกล้า กรุงเทพฯ</div>
+      <h1>Guarding Every<br/><span class="highlight">Precious Moment</span></h1>
+      <p>จองคิวติดตั้งกล้อง DDPAI ออนไลน์ — เลือกวันเวลาที่สะดวก กรอกข้อมูลรถยนต์ และรับการยืนยันทางอีเมลทันที</p>
+      <div class="hero-actions">
+        <a class="hero-cta" href="#mainContent" onclick="event.preventDefault();document.getElementById('mainContent').scrollIntoView({behavior:'smooth',block:'start'})">
+          เริ่มจองเลย
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <a class="hero-cta-ghost" href="https://www.ddpai.com/" target="_blank" rel="noopener">
+          เยี่ยมชมเว็บไซต์ DDPAI
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M7 17L17 7M7 7h10v10"/></svg>
+        </a>
+      </div>
+    </div>
+    <div class="hero-fade"></div>
   </div>
 
   <!-- Step Indicator -->
@@ -42,7 +60,14 @@
   <!-- Footer -->
   <div class="footer">
     <div class="footer-brand">
-      <img src="https://bsta.sa/images/feature_variant/5/ddbai-400x120-logo.png" alt="DDPAI" class="footer-logo">
+      <img src="assets/ddpai-logo.png" alt="DDPAI" class="footer-logo">
+    </div>
+    <div class="footer-links">
+      <a href="https://www.ddpai.com/" target="_blank" rel="noopener">เว็บไซต์ DDPAI</a>
+      <span class="footer-dot">·</span>
+      <a href="https://www.ddpai.com/products" target="_blank" rel="noopener">ผลิตภัณฑ์</a>
+      <span class="footer-dot">·</span>
+      <a href="https://www.ddpai.com/support" target="_blank" rel="noopener">ฝ่ายสนับสนุน</a>
     </div>
     <p class="footer-text">DDPAI Thailand — Powered by Susco Pinklao</p>
     <p class="footer-copy">&copy; 2026 DDPAI. All rights reserved.</p>

@@ -11,30 +11,90 @@
 </head>
 <body>
 
-  <!-- Navbar -->
-  <nav class="navbar">
-    <div class="navbar-brand">
-      <img src="https://bsta.sa/images/feature_variant/5/ddbai-400x120-logo.png" alt="DDPAI" class="navbar-logo-img">
-      <div class="navbar-divider"></div>
-      <div class="navbar-text">
-        <div class="title">Admin Panel</div>
-        <div class="subtitle">ระบบจัดการจองติดตั้ง</div>
+  <!-- Login Screen -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <div class="login-header">
+        <img src="assets/ddpai-logo.png" alt="DDPAI" class="login-logo">
+        <h1>Admin Panel</h1>
+        <p>เข้าสู่ระบบเพื่อจัดการการจอง</p>
       </div>
+      <form class="login-form" id="loginForm" onsubmit="handleLogin(event)">
+        <div class="login-field">
+          <label for="loginEmail">อีเมล</label>
+          <input type="email" id="loginEmail" autocomplete="email" required placeholder="admin@example.com">
+        </div>
+        <div class="login-field">
+          <label for="loginPassword">รหัสผ่าน</label>
+          <input type="password" id="loginPassword" autocomplete="current-password" required placeholder="••••••••">
+        </div>
+        <div class="login-error" id="loginError"></div>
+        <button type="submit" class="login-btn" id="loginBtn">เข้าสู่ระบบ</button>
+      </form>
     </div>
-    <a href="index.html" class="navbar-link">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="4" width="18" height="18" rx="2"/>
-        <path d="M16 2v4M8 2v4M3 10h18"/>
-      </svg>
-      หน้าจองลูกค้า
-    </a>
-  </nav>
+  </div>
 
-  <!-- Tabs -->
-  <div class="tab-bar" id="tabBar"></div>
+  <!-- Main App (hidden until authenticated) -->
+  <div id="appRoot" class="hidden">
+    <div class="app-shell">
 
-  <!-- Page Content -->
-  <div class="page" id="pageContent"></div>
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sb-brand">
+          <img src="assets/ddpai-logo.png" alt="DDPAI" class="sb-logo-img">
+          <span class="sb-badge">ADMIN</span>
+        </div>
+
+        <nav class="sb-nav" id="sbNav"></nav>
+
+        <div class="sb-footer">
+          <div class="sb-live">
+            <span class="sb-live-dot"></span>
+            LIVE
+          </div>
+          <div class="sb-user">
+            <div class="sb-user-email" id="sbUserEmail">—</div>
+            <div class="sb-user-role">admin</div>
+          </div>
+          <a href="index.html" class="sb-link sb-link-customer">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/>
+              <path d="M16 2v4M8 2v4M3 10h18"/>
+            </svg>
+            หน้าจองลูกค้า
+          </a>
+          <button class="sb-logout" onclick="handleLogout()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+              <path d="M16 17l5-5-5-5M21 12H9"/>
+            </svg>
+            ออกจากระบบ
+          </button>
+        </div>
+      </aside>
+
+      <!-- Mobile sidebar backdrop -->
+      <div class="sb-backdrop" id="sbBackdrop" onclick="toggleSidebar(false)"></div>
+
+      <!-- Main Area -->
+      <main class="main-area">
+        <header class="main-topbar">
+          <button class="sb-toggle" onclick="toggleSidebar(true)" aria-label="Menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
+          <div class="main-title">
+            <h1 id="pageTitle">Dashboard</h1>
+            <p id="pageSubtitle"></p>
+          </div>
+          <div class="main-actions" id="pageActions"></div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="page" id="pageContent"></div>
+      </main>
+
+    </div>
+  </div>
 
   <!-- Booking Modal -->
   <div class="modal-overlay" id="bookingModal">

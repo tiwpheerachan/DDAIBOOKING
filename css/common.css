@@ -69,34 +69,152 @@ body {
   color: var(--slate-800);
   min-height: 100vh;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* ---- Navbar ---- */
+/* App-like scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--slate-200);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--slate-300); background-clip: padding-box; }
+
+/* ---- Navbar (DDPAI brand — white) ---- */
 .navbar {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  padding: 0 24px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  padding: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   height: 64px;
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.04);
+}
+
+.navbar-inner {
+  width: 100%;
+  max-width: 1280px;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .navbar-brand {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
+  text-decoration: none;
 }
 
 .navbar-logo-img {
-  height: 32px;
+  height: 26px;
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
-  filter: brightness(1.1);
+}
+
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.navbar-site-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  color: var(--slate-600);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 999px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.navbar-site-link:hover {
+  color: #c2010f;
+  background: rgba(230, 0, 18, 0.06);
+}
+
+.navbar-check-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: #fff;
+  color: #c2010f;
+  border: 1.5px solid #c2010f;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  transition: background 0.15s, color 0.15s, transform 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.navbar-check-btn:hover {
+  background: #c2010f;
+  color: #fff;
+}
+
+.navbar-check-btn:active { transform: scale(0.97); }
+
+@media (max-width: 640px) {
+  .navbar { height: 56px; }
+  .navbar-inner { padding: 0 12px; gap: 8px; }
+  .navbar-logo-img { height: 20px; }
+  .navbar-actions { gap: 8px; }
+
+  /* ddpai.com keeps text label */
+  .navbar-site-link {
+    padding: 7px 12px;
+    background: var(--slate-100);
+    border-radius: 999px;
+    font-size: 12.5px;
+    gap: 5px;
+  }
+
+  .navbar-site-link svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .navbar-site-link:hover {
+    background: rgba(230, 0, 18, 0.12);
+  }
+
+  /* Check booking → icon-only circle (text is hidden) */
+  .navbar-check-btn .navbar-link-label { display: none; }
+
+  .navbar-check-btn {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .navbar-site-link { padding: 6px 10px; font-size: 11.5px; }
 }
 
 .navbar-divider {
@@ -233,47 +351,59 @@ body {
 
 /* ---- Buttons ---- */
 .btn {
-  padding: 8px 18px;
-  border-radius: var(--radius-xs);
+  padding: 9px 18px;
+  border-radius: 10px;
   border: none;
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
-  transition: all 0.2s;
+  transition: transform 0.12s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  letter-spacing: 0.1px;
+  -webkit-tap-highlight-color: transparent;
 }
 
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 3px solid rgba(249, 115, 22, 0.35); outline-offset: 2px; }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
 .btn-sm {
-  padding: 5px 12px;
-  font-size: 11px;
-  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  border-radius: 8px;
 }
 
 .btn-orange {
-  background: var(--orange-500);
+  background: linear-gradient(135deg, var(--orange-500), var(--orange-600));
   color: #fff;
+  box-shadow: 0 6px 16px -6px rgba(249, 115, 22, 0.55);
 }
 .btn-orange:hover {
-  background: var(--orange-600);
+  box-shadow: 0 10px 22px -8px rgba(249, 115, 22, 0.7);
+  transform: translateY(-1px);
 }
 
 .btn-green {
-  background: var(--green-500);
+  background: linear-gradient(135deg, #22c55e, var(--green-600));
   color: #fff;
+  box-shadow: 0 6px 16px -6px rgba(34, 197, 94, 0.55);
 }
 .btn-green:hover {
-  background: var(--green-600);
+  box-shadow: 0 10px 22px -8px rgba(34, 197, 94, 0.7);
+  transform: translateY(-1px);
 }
 
 .btn-blue {
-  background: var(--blue-500);
+  background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
   color: #fff;
+  box-shadow: 0 6px 16px -6px rgba(59, 130, 246, 0.55);
 }
 .btn-blue:hover {
-  background: var(--blue-600);
+  box-shadow: 0 10px 22px -8px rgba(59, 130, 246, 0.7);
+  transform: translateY(-1px);
 }
 
 .btn-red {
@@ -283,26 +413,28 @@ body {
 }
 .btn-red:hover {
   background: #fecaca;
+  border-color: #fca5a5;
 }
 
 .btn-ghost {
-  background: transparent;
+  background: #fff;
   color: var(--slate-600);
   border: 1.5px solid var(--slate-200);
 }
 .btn-ghost:hover {
   background: var(--slate-50);
   border-color: var(--slate-300);
+  color: var(--slate-800);
 }
 
 /* ---- Card ---- */
 .card {
   background: #fff;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--slate-200);
-  margin-bottom: 20px;
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px -8px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  margin-bottom: 16px;
 }
 
 .card-header {

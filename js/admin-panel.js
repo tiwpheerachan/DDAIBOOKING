@@ -20,6 +20,9 @@ let schedCalYear = nowThai().getFullYear();
 let schedCalMonth = nowThai().getMonth();
 let schedSelectedDate = todayThai();
 let schedViewSlot = null; // booking id for detail view
+let schedEditMode = false;
+let schedSavingEdit = false;
+let schedFilterStatus = "all"; // all | booked | free | blocked | pending | confirmed | completed
 
 // SVG icon helper
 const ICONS = {
@@ -42,14 +45,19 @@ const TABS = [
   { key: "settings", label: "ตั้งค่า", icon: ICONS.settings },
 ];
 
-// ---- Tab Bar ----
+// ---- Sidebar Nav ----
 
 function renderTabs() {
-  const bar = document.getElementById("tabBar");
-  bar.innerHTML = TABS.map(
-    (t) =>
-      `<button class="tab-btn ${activeTab === t.key ? "active" : ""}" onclick="switchTab('${t.key}')">${t.icon} <span class="tab-label">${t.label}</span></button>`
-  ).join("");
+  const bar = document.getElementById("sbNav");
+  if (bar) {
+    bar.innerHTML = TABS.map(
+      (t) =>
+        `<button class="sb-nav-btn ${activeTab === t.key ? "active" : ""}" onclick="switchTab('${t.key}')">${t.icon} <span class="sb-nav-label">${t.label}</span></button>`
+    ).join("");
+  }
+  const cur = TABS.find((t) => t.key === activeTab);
+  const title = document.getElementById("pageTitle");
+  if (title && cur) title.textContent = cur.label;
 }
 
 function switchTab(key) {
@@ -57,6 +65,23 @@ function switchTab(key) {
   activeTab = key;
   renderTabs();
   renderPage();
+  toggleSidebar(false);
+  // Reset subtitle by default — pages can still set their own
+  const sub = document.getElementById("pageSubtitle");
+  if (sub) sub.textContent = "";
+}
+
+function toggleSidebar(open) {
+  const sb = document.getElementById("sidebar");
+  const bd = document.getElementById("sbBackdrop");
+  if (!sb || !bd) return;
+  if (open) {
+    sb.classList.add("open");
+    bd.classList.add("show");
+  } else {
+    sb.classList.remove("open");
+    bd.classList.remove("show");
+  }
 }
 
 // ---- Main Page Render ----
@@ -267,10 +292,38 @@ function renderPage() {
     const availCount = allSlots.length - bookedCount - blockedCount;
     const schedDetail = schedViewSlot ? bookings.find(b => b.id === schedViewSlot) : null;
 
+    // Quick date shortcuts
+    const _today = todayThai();
+    const _tomorrow = (() => { const d = nowThai(); d.setDate(d.getDate() + 1); return formatDate(d); })();
+    const _shortcuts = [
+      { key: _today, label: "วันนี้" },
+      { key: _tomorrow, label: "พรุ่งนี้" },
+    ];
+
+    // "Now" indicator visibility
+    const isToday = schedSelectedDate === _today;
+    const nowMin = nowMinutesThai();
+    const nowLabel = String(Math.floor(nowMin / 60)).padStart(2,"0") + ":" + String(nowMin % 60).padStart(2,"0");
+
+    // Filter chips counts
+    const filterCounts = {
+      all: allSlots.length,
+      pending: dayBookings.filter(b => b.status === "pending").length,
+      confirmed: dayBookings.filter(b => b.status === "confirmed").length,
+      completed: dayBookings.filter(b => b.status === "completed").length,
+      free: availCount,
+    };
+
     page.innerHTML = `
       <div class="sched-layout fade-in">
         <!-- Left Column -->
         <div class="sched-left">
+          <!-- Quick shortcuts -->
+          <div class="sched-shortcuts">
+            ${_shortcuts.map(s => `<button class="sched-chip ${schedSelectedDate === s.key ? 'active' : ''}" onclick="schedSelectedDate='${s.key}';schedCalYear=${parseInt(s.key.slice(0,4))};schedCalMonth=${parseInt(s.key.slice(5,7))-1};schedViewSlot=null;renderPage()">${s.label}</button>`).join('')}
+            <button class="sched-chip" onclick="(()=>{const d=nowThai();d.setDate(d.getDate()+(7-d.getDay())%7||7);schedSelectedDate=formatDate(d);schedCalYear=d.getFullYear();schedCalMonth=d.getMonth();schedViewSlot=null;renderPage();})()">อาทิตย์หน้า</button>
+          </div>
+
           <!-- Mini Monthly Overview -->
           <div class="card">
             <div class="card-header" style="margin-bottom:10px">
@@ -281,7 +334,11 @@ function renderPage() {
 
           <!-- Day Stats -->
           <div class="card sched-day-stats-card">
-            <div class="sched-day-stats-title">${thaiDate(schedSelectedDate)}${dayIsHoliday ? ' <span class="badge badge-cancelled">วันหยุด</span>' : ''}</div>
+            <div class="sched-day-stats-title">
+              <span>${thaiDate(schedSelectedDate)}</span>
+              ${isToday ? '<span class="badge" style="background:var(--orange-100);color:var(--orange-700);border:1px solid var(--orange-200);font-size:10px;padding:2px 8px">วันนี้</span>' : ''}
+              ${dayIsHoliday ? '<span class="badge badge-cancelled">วันหยุด</span>' : ''}
+            </div>
             ${dayIsHoliday ? '' : `
             <div class="sched-day-stats">
               <div class="sched-stat">
@@ -303,37 +360,6 @@ function renderPage() {
             </div>`}
           </div>
 
-          <!-- Detail Panel (when a booking is selected) -->
-          ${schedDetail ? `
-          <div class="card sched-detail-card">
-            <div class="sched-detail-close" onclick="schedViewSlot=null;renderPage()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </div>
-            <div class="sched-detail-header">
-              <span class="badge badge-${schedDetail.status}" style="font-size:12px;padding:4px 12px">${STATUS_MAP[schedDetail.status]?.label}</span>
-              <div class="sched-detail-name">${schedDetail.name}</div>
-              <div class="sched-detail-sub">${schedDetail.refCode || '#' + schedDetail.id} | ${schedDetail.time} น.</div>
-            </div>
-            <div class="sched-detail-rows">
-              ${[
-                ["รุ่นกล้อง", schedDetail.cameraModel],
-                ["ทะเบียน", schedDetail.licensePlate],
-                ["รถ", schedDetail.carBrand + " " + schedDetail.carModel],
-                ["ประเภทรถ", schedDetail.carType],
-                ["ติดตั้ง", schedDetail.installType],
-                ["ช่องทาง", schedDetail.channel],
-                ["คำสั่งซื้อ", schedDetail.orderNumber],
-                ["เบอร์โทร", schedDetail.phone],
-                ["อีเมล", schedDetail.email],
-                ...(schedDetail.notes ? [["หมายเหตุ", schedDetail.notes]] : []),
-              ].map(([k,v]) => `<div class="sched-detail-row"><span class="sched-dk">${k}</span><span class="sched-dv">${v}</span></div>`).join("")}
-            </div>
-            <div class="sched-detail-actions">
-              ${schedDetail.status === 'pending' ? `<button class="btn btn-green btn-sm" onclick="changeStatus(${schedDetail.id},'confirmed')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg> ยืนยัน</button>` : ''}
-              ${schedDetail.status === 'confirmed' ? `<button class="btn btn-blue btn-sm" onclick="changeStatus(${schedDetail.id},'completed')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg> เสร็จสิ้น</button>` : ''}
-              ${schedDetail.status !== 'cancelled' && schedDetail.status !== 'completed' ? `<button class="btn btn-red btn-sm" onclick="changeStatus(${schedDetail.id},'cancelled')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg> ยกเลิก</button>` : ''}
-            </div>
-          </div>` : ''}
         </div>
 
         <!-- Right Column: Daily Timeline -->
@@ -351,49 +377,20 @@ function renderPage() {
             </div>
             ${dayIsHoliday
               ? '<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--red-500)" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M9 15l6-6M9 9l6 6"/></svg><p>วันหยุด — ไม่เปิดให้บริการ</p></div>'
-              : `<div class="sched-timeline">
-              ${allSlots.map(slot => {
-                const bk = bookings.find(b => b.date === schedSelectedDate && b.time === slot && b.status !== "cancelled");
-                const isBlk = blocked.some(s => s.date === schedSelectedDate && s.time === slot);
-                const isActive = bk && schedViewSlot === bk.id;
-                if (bk) {
-                  return `
-                  <div class="tl-row tl-booked ${isActive ? 'tl-active' : ''}" onclick="schedViewSlot=${bk.id};renderPage()">
-                    <div class="tl-time">${slot}</div>
-                    <div class="tl-indicator"><div class="tl-dot tl-dot-${bk.status}"></div><div class="tl-line"></div></div>
-                    <div class="tl-card tl-card-${bk.status}">
-                      <div class="tl-card-top">
-                        <span class="tl-card-name">${bk.name}</span>
-                        <span class="badge badge-${bk.status}" style="font-size:10px;padding:2px 8px">${STATUS_MAP[bk.status]?.label}</span>
-                      </div>
-                      <div class="tl-card-detail">${bk.cameraModel} | ${bk.licensePlate} | ${bk.carBrand} ${bk.carModel}</div>
-                      <div class="tl-card-detail">${bk.installType} | ${bk.phone}</div>
-                    </div>
-                  </div>`;
-                } else if (isBlk) {
-                  return `
-                  <div class="tl-row tl-blocked">
-                    <div class="tl-time">${slot}</div>
-                    <div class="tl-indicator"><div class="tl-dot tl-dot-blocked"></div><div class="tl-line"></div></div>
-                    <div class="tl-card tl-card-blocked">
-                      <span class="tl-card-name" style="color:var(--red-500)">ปิดให้บริการ</span>
-                    </div>
-                  </div>`;
-                } else {
-                  return `
-                  <div class="tl-row tl-free">
-                    <div class="tl-time">${slot}</div>
-                    <div class="tl-indicator"><div class="tl-dot tl-dot-free"></div><div class="tl-line"></div></div>
-                    <div class="tl-card tl-card-free">
-                      <span class="tl-empty-text">ว่าง</span>
-                    </div>
-                  </div>`;
-                }
-              }).join("")}
-            </div>`}
+              : `
+              <div class="sched-filters">
+                <button class="sched-filter ${schedFilterStatus==='all'?'active':''}" onclick="schedFilterStatus='all';renderPage()">ทั้งหมด <span class="count">${filterCounts.all}</span></button>
+                <button class="sched-filter ${schedFilterStatus==='pending'?'active':''}" onclick="schedFilterStatus='pending';renderPage()">รอยืนยัน <span class="count">${filterCounts.pending}</span></button>
+                <button class="sched-filter ${schedFilterStatus==='confirmed'?'active':''}" onclick="schedFilterStatus='confirmed';renderPage()">ยืนยัน <span class="count">${filterCounts.confirmed}</span></button>
+                <button class="sched-filter ${schedFilterStatus==='completed'?'active':''}" onclick="schedFilterStatus='completed';renderPage()">เสร็จ <span class="count">${filterCounts.completed}</span></button>
+                <button class="sched-filter ${schedFilterStatus==='free'?'active':''}" onclick="schedFilterStatus='free';renderPage()">ว่าง <span class="count">${filterCounts.free}</span></button>
+              </div>
+              ${renderSchedTimeline(allSlots, bookings, blocked, isToday, nowMin, nowLabel)}
+              `}
           </div>
         </div>
       </div>
+      ${schedDetail ? renderSchedDrawer(schedDetail) : ''}
     `;
   }
 
@@ -1427,6 +1424,505 @@ async function submitModal() {
   renderPage();
 }
 
-// ---- Init: wait for Supabase data ----
-renderTabs();
-dataReady.then(() => renderPage());
+// ============================================================
+// Schedule Timeline Renderer (with filters & now-indicator)
+// ============================================================
+
+function renderSchedTimeline(allSlots, bookings, blocked, isToday, nowMin, nowLabel) {
+  const toMin = (t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+
+  // Find slot index where "now" falls (for today)
+  let nowSlotIdx = -1;
+  if (isToday) {
+    for (let i = 0; i < allSlots.length; i++) {
+      if (toMin(allSlots[i]) >= nowMin) { nowSlotIdx = i; break; }
+    }
+  }
+
+  const items = allSlots.map((slot, idx) => {
+    const bk = bookings.find(b => b.date === schedSelectedDate && b.time === slot && b.status !== "cancelled");
+    const isBlk = blocked.some(s => s.date === schedSelectedDate && s.time === slot);
+
+    // Apply filter
+    if (schedFilterStatus !== "all") {
+      if (schedFilterStatus === "free") {
+        if (bk || isBlk) return null;
+      } else if (schedFilterStatus === "blocked") {
+        if (!isBlk) return null;
+      } else {
+        if (!bk || bk.status !== schedFilterStatus) return null;
+      }
+    }
+
+    const isActive = bk && schedViewSlot === bk.id;
+    let html = "";
+    if (bk) {
+      html = `
+        <div class="tl-row tl-booked ${isActive ? 'tl-active' : ''}" onclick="openSchedDetail(${bk.id})">
+          <div class="tl-time">${slot}</div>
+          <div class="tl-indicator"><div class="tl-dot tl-dot-${bk.status}"></div><div class="tl-line"></div></div>
+          <div class="tl-card tl-card-${bk.status}">
+            <div class="tl-card-top">
+              <span class="tl-card-name">${_esc(bk.name)}</span>
+              <span class="badge badge-${bk.status}" style="font-size:10px;padding:2px 8px">${STATUS_MAP[bk.status]?.label}</span>
+            </div>
+            <div class="tl-card-detail">${_esc(bk.cameraModel)} · ${_esc(bk.licensePlate)} · ${_esc(bk.carBrand)} ${_esc(bk.carModel)}</div>
+            <div class="tl-card-detail">${_esc(bk.installType)} · ${_esc(bk.phone)}</div>
+          </div>
+        </div>`;
+    } else if (isBlk) {
+      html = `
+        <div class="tl-row tl-blocked">
+          <div class="tl-time">${slot}</div>
+          <div class="tl-indicator"><div class="tl-dot tl-dot-blocked"></div><div class="tl-line"></div></div>
+          <div class="tl-card tl-card-blocked">
+            <span class="tl-card-name" style="color:var(--red-500)">ปิดให้บริการ</span>
+          </div>
+        </div>`;
+    } else {
+      html = `
+        <div class="tl-row tl-free">
+          <div class="tl-time">${slot}</div>
+          <div class="tl-indicator"><div class="tl-dot tl-dot-free"></div><div class="tl-line"></div></div>
+          <div class="tl-card tl-card-free">
+            <span class="tl-empty-text">ว่าง</span>
+          </div>
+        </div>`;
+    }
+
+    // Inject "now" line BEFORE the slot at nowSlotIdx
+    if (idx === nowSlotIdx && schedFilterStatus === "all") {
+      html = `<div class="tl-now-line"><div class="tl-now-time">${nowLabel}</div><div class="tl-now-pulse"></div><div class="tl-now-bar"></div></div>` + html;
+    }
+    return html;
+  }).filter(Boolean);
+
+  if (items.length === 0) {
+    return `<div class="tl-empty-state">ไม่มีรายการตามตัวกรอง</div>`;
+  }
+  return `<div class="sched-timeline">${items.join("")}</div>`;
+}
+
+// ============================================================
+// Schedule Detail Drawer
+// ============================================================
+
+function _esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+
+function openSchedDetail(id) {
+  schedViewSlot = id;
+  schedEditMode = false;
+  renderPage();
+}
+
+function closeSchedDetail() {
+  schedViewSlot = null;
+  schedEditMode = false;
+  renderPage();
+}
+
+function startSchedEdit() {
+  schedEditMode = true;
+  renderPage();
+}
+
+function cancelSchedEdit() {
+  schedEditMode = false;
+  renderPage();
+}
+
+function getEditTimeOptions(date, currentTime) {
+  let slots = getAvailableSlots(date, true);
+  if (currentTime && !slots.includes(currentTime)) slots.push(currentTime);
+  slots.sort();
+  return slots;
+}
+
+function updateEditTimeOptions(currentTime) {
+  const date = document.getElementById("eDate").value;
+  const sel = document.getElementById("eTime");
+  if (!date || !sel) return;
+  const slots = getEditTimeOptions(date, currentTime);
+  const prev = sel.value;
+  sel.innerHTML = slots.map(s => `<option value="${s}" ${s === (prev || currentTime) ? 'selected' : ''}>${s}</option>`).join('');
+}
+
+async function saveSchedEdit() {
+  if (schedSavingEdit) return;
+  const id = schedViewSlot;
+  const b = getBookings().find(x => x.id === id);
+  if (!b) return;
+
+  const updates = {
+    date: document.getElementById("eDate").value,
+    time: document.getElementById("eTime").value,
+    name: document.getElementById("eName").value.trim(),
+    phone: document.getElementById("ePhone").value.trim(),
+    email: document.getElementById("eEmail").value.trim(),
+    cameraModel: document.getElementById("eCamera").value,
+    licensePlate: document.getElementById("ePlate").value.trim().toUpperCase(),
+    carBrand: document.getElementById("eBrand").value.trim(),
+    carModel: document.getElementById("eCarModel").value.trim(),
+    carType: document.getElementById("eCarType").value,
+    installType: document.getElementById("eInstall").value,
+    channel: document.getElementById("eChannel").value,
+    orderNumber: document.getElementById("eOrder").value.trim(),
+    notes: document.getElementById("eNotes").value.trim(),
+  };
+
+  for (const k of ["date","time","name","phone","email","cameraModel","licensePlate","carBrand","carModel","carType","installType","channel","orderNumber"]) {
+    if (!updates[k]) { alert("กรุณากรอกข้อมูลให้ครบทุกช่อง *"); return; }
+  }
+
+  // Check time conflict (skip current booking)
+  const conflict = getBookings().find(x =>
+    x.id !== id && x.status !== "cancelled" &&
+    x.date === updates.date && x.time === updates.time
+  );
+  if (conflict) { alert("ช่วงเวลานี้มีการจองแล้ว — กรุณาเลือกเวลาอื่น"); return; }
+
+  schedSavingEdit = true;
+  const ok = await updateBookingById(id, updates);
+  schedSavingEdit = false;
+
+  if (!ok) {
+    alert("ไม่สามารถบันทึกได้ (รายการอาจถูกยกเลิกหรือเสร็จสิ้นแล้ว)");
+    return;
+  }
+  await addLog(id, "edit", "แอดมินแก้ไขข้อมูลการจอง");
+  schedEditMode = false;
+  flashToast("บันทึกข้อมูลแล้ว");
+  renderPage();
+}
+
+async function resendSchedEmail() {
+  const b = getBookings().find(x => x.id === schedViewSlot);
+  if (!b) return;
+  if (!b.email) { alert("รายการนี้ไม่มีอีเมล"); return; }
+  if (!confirm(`ส่งอีเมลซ้ำไปที่\n${b.email} ?`)) return;
+
+  const btn = document.getElementById("resendEmailBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "กำลังส่ง..."; }
+
+  const ok = await resendBookingEmail(b.id);
+  if (ok) {
+    flashToast("ส่งอีเมลแล้ว → " + b.email);
+  } else {
+    alert("ส่งอีเมลไม่สำเร็จ — ตรวจสอบว่ารัน supabase-resend-email.sql แล้วหรือยัง");
+  }
+  renderPage();
+}
+
+function copyText(text) {
+  if (!text) return;
+  navigator.clipboard?.writeText(String(text))
+    .then(() => flashToast("คัดลอก: " + text))
+    .catch(() => {});
+}
+
+function flashToast(msg) {
+  let el = document.getElementById("flashToast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "flashToast";
+    el.className = "flash-toast";
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove("show"), 1800);
+}
+
+function renderSchedDrawer(b) {
+  return `
+    <div class="sched-drawer-backdrop" onclick="closeSchedDetail()"></div>
+    <aside class="sched-drawer" onclick="event.stopPropagation()">
+      <div class="drawer-header">
+        <div style="flex:1;min-width:0">
+          <span class="badge badge-${b.status}" style="font-size:11px;padding:3px 10px">${STATUS_MAP[b.status]?.label || b.status}</span>
+          <div class="drawer-title">${_esc(b.name)}</div>
+          <div class="drawer-sub">
+            <span class="drawer-ref" onclick="copyText('${_esc(b.refCode || '')}')" title="คลิกเพื่อคัดลอก">${_esc(b.refCode || '#' + b.id)}</span>
+            · ${b.time} น. · ${thaiDate(b.date)}
+          </div>
+        </div>
+        <button class="drawer-close" onclick="closeSchedDetail()" title="ปิด (Esc)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="drawer-body">
+        ${schedEditMode ? renderSchedEditForm(b) : renderSchedView(b)}
+      </div>
+      <div class="drawer-footer">
+        ${schedEditMode ? renderSchedEditFooter(b) : renderSchedViewFooter(b)}
+      </div>
+    </aside>
+  `;
+}
+
+function renderSchedView(b) {
+  const rows = [
+    ["รุ่นกล้อง", b.cameraModel],
+    ["ทะเบียนรถ", b.licensePlate],
+    ["รถ", b.carBrand + " " + b.carModel],
+    ["ประเภทรถ", b.carType],
+    ["การติดตั้ง", b.installType],
+    ["ช่องทาง", b.channel],
+    ["คำสั่งซื้อ", b.orderNumber],
+    ["เบอร์โทร", b.phone],
+    ["อีเมล", b.email],
+  ];
+  if (b.notes) rows.push(["หมายเหตุ", b.notes]);
+  if (b.createdAt) rows.push(["สร้างเมื่อ", new Date(b.createdAt).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })]);
+
+  return `
+    <div class="drawer-quick-actions">
+      ${b.phone ? `<a class="qa-chip" href="tel:${_esc(b.phone)}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.37 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>
+        โทร
+      </a>` : ''}
+      ${b.email ? `<a class="qa-chip" href="mailto:${_esc(b.email)}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+        อีเมล
+      </a>` : ''}
+      <button class="qa-chip" onclick="copyText('${_esc(b.refCode || '')}')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        คัดลอกรหัส
+      </button>
+    </div>
+
+    <div class="drawer-status-bar">
+      <div class="dsb-step ${b.status === 'pending' || b.status === 'confirmed' || b.status === 'completed' ? 'active' : ''} ${b.status !== 'pending' && b.status !== 'cancelled' ? 'done' : ''}">
+        <div class="dsb-circle">${b.status !== 'pending' && b.status !== 'cancelled' ? '✓' : '1'}</div>
+        <span>รอยืนยัน</span>
+      </div>
+      <div class="dsb-line ${b.status === 'confirmed' || b.status === 'completed' ? 'done' : ''}"></div>
+      <div class="dsb-step ${b.status === 'confirmed' || b.status === 'completed' ? 'active' : ''} ${b.status === 'completed' ? 'done' : ''}">
+        <div class="dsb-circle">${b.status === 'completed' ? '✓' : '2'}</div>
+        <span>ยืนยันแล้ว</span>
+      </div>
+      <div class="dsb-line ${b.status === 'completed' ? 'done' : ''}"></div>
+      <div class="dsb-step ${b.status === 'completed' ? 'active done' : ''}">
+        <div class="dsb-circle">3</div>
+        <span>เสร็จสิ้น</span>
+      </div>
+    </div>
+
+    <div class="drawer-rows">
+      ${rows.map(([k, v]) => `
+        <div class="drawer-row">
+          <span class="k">${k}</span>
+          <span class="v">${_esc(v || '-')}</span>
+        </div>
+      `).join("")}
+    </div>
+
+    ${renderBookingLogs(b.id)}
+  `;
+}
+
+function renderSchedViewFooter(b) {
+  const isLocked = b.status === 'cancelled' || b.status === 'completed';
+  return `
+    <div class="drawer-actions">
+      ${!isLocked ? `<button class="btn btn-orange btn-sm" onclick="startSchedEdit()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        แก้ไข
+      </button>` : ''}
+      ${b.email ? `<button id="resendEmailBtn" class="btn btn-ghost btn-sm" onclick="resendSchedEmail()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+        ส่งอีเมลซ้ำ
+      </button>` : ''}
+      ${b.status === 'pending' ? `<button class="btn btn-green btn-sm" onclick="changeStatus(${b.id},'confirmed')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+        ยืนยัน
+      </button>` : ''}
+      ${b.status === 'confirmed' ? `<button class="btn btn-blue btn-sm" onclick="changeStatus(${b.id},'completed')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+        เสร็จสิ้น
+      </button>` : ''}
+      ${!isLocked ? `<button class="btn btn-red btn-sm" onclick="changeStatus(${b.id},'cancelled')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        ยกเลิก
+      </button>` : ''}
+      ${b.status === 'cancelled' ? `<button class="btn btn-ghost btn-sm" onclick="doRestore(${b.id},'pending')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 12a9 9 0 109-9"/><path d="M3 3v9h9"/></svg>
+        กู้คืน
+      </button>` : ''}
+      ${b.status === 'completed' ? `<button class="btn btn-ghost btn-sm" onclick="doRestore(${b.id},'confirmed')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 12a9 9 0 109-9"/><path d="M3 3v9h9"/></svg>
+        ย้อนกลับ
+      </button>` : ''}
+    </div>
+  `;
+}
+
+function renderSchedEditForm(b) {
+  const settings = getSettings();
+  const slotOptions = getEditTimeOptions(b.date, b.time);
+  const camOpts = settings.cameraModels || DEFAULT_SETTINGS.cameraModels;
+
+  const opt = (val, list) => list.map(x => `<option value="${_esc(x)}" ${x === val ? 'selected' : ''}>${_esc(x)}</option>`).join('');
+
+  return `
+    <div class="drawer-edit-banner">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="10"/></svg>
+      กำลังแก้ไข — กดบันทึกเพื่อยืนยัน
+    </div>
+    <form class="drawer-edit-form" onsubmit="event.preventDefault();saveSchedEdit()">
+      <div class="ed-grid">
+        <div class="ed-field">
+          <label>วันที่</label>
+          <input type="date" id="eDate" value="${b.date}" onchange="updateEditTimeOptions('${b.time}')">
+        </div>
+        <div class="ed-field">
+          <label>เวลา</label>
+          <select id="eTime">${slotOptions.map(s => `<option value="${s}" ${s === b.time ? 'selected' : ''}>${s}</option>`).join('')}</select>
+        </div>
+        <div class="ed-field full">
+          <label>ชื่อ-นามสกุล</label>
+          <input type="text" id="eName" value="${_esc(b.name)}">
+        </div>
+        <div class="ed-field">
+          <label>เบอร์โทร</label>
+          <input type="tel" id="ePhone" value="${_esc(b.phone)}">
+        </div>
+        <div class="ed-field">
+          <label>อีเมล</label>
+          <input type="email" id="eEmail" value="${_esc(b.email)}">
+        </div>
+        <div class="ed-field">
+          <label>รุ่นกล้อง</label>
+          <select id="eCamera">${opt(b.cameraModel, camOpts)}</select>
+        </div>
+        <div class="ed-field">
+          <label>ทะเบียนรถ</label>
+          <input type="text" id="ePlate" value="${_esc(b.licensePlate)}" style="text-transform:uppercase">
+        </div>
+        <div class="ed-field">
+          <label>ยี่ห้อ</label>
+          <input type="text" id="eBrand" value="${_esc(b.carBrand)}">
+        </div>
+        <div class="ed-field">
+          <label>รุ่น</label>
+          <input type="text" id="eCarModel" value="${_esc(b.carModel)}">
+        </div>
+        <div class="ed-field full">
+          <label>ประเภทรถ</label>
+          <select id="eCarType">${opt(b.carType, CAR_TYPES)}</select>
+        </div>
+        <div class="ed-field full">
+          <label>การติดตั้ง</label>
+          <select id="eInstall">${opt(b.installType, INSTALL_TYPES)}</select>
+        </div>
+        <div class="ed-field">
+          <label>ช่องทาง</label>
+          <select id="eChannel">${opt(b.channel, CHANNELS)}</select>
+        </div>
+        <div class="ed-field">
+          <label>คำสั่งซื้อ</label>
+          <input type="text" id="eOrder" value="${_esc(b.orderNumber)}">
+        </div>
+        <div class="ed-field full">
+          <label>หมายเหตุ</label>
+          <textarea id="eNotes">${_esc(b.notes || '')}</textarea>
+        </div>
+      </div>
+    </form>
+  `;
+}
+
+function renderSchedEditFooter(b) {
+  return `
+    <div class="drawer-actions">
+      <button class="btn btn-orange btn-sm" onclick="saveSchedEdit()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+        บันทึก
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="cancelSchedEdit()">ยกเลิกการแก้ไข</button>
+    </div>
+  `;
+}
+
+// Esc closes drawer
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && schedViewSlot != null) {
+    closeSchedDetail();
+  }
+});
+
+// ============================================================
+// Authentication (Supabase Auth)
+// ============================================================
+
+let _appBooted = false;
+
+async function handleLogin(event) {
+  event.preventDefault();
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const errBox = document.getElementById("loginError");
+  const btn = document.getElementById("loginBtn");
+
+  errBox.classList.remove("show");
+  errBox.textContent = "";
+  btn.disabled = true;
+  btn.textContent = "กำลังเข้าสู่ระบบ...";
+
+  const { data, error } = await _sb.auth.signInWithPassword({ email, password });
+
+  btn.disabled = false;
+  btn.textContent = "เข้าสู่ระบบ";
+
+  if (error || !data?.session) {
+    errBox.textContent = "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
+    errBox.classList.add("show");
+    return;
+  }
+
+  document.getElementById("loginPassword").value = "";
+  showApp(data.session.user);
+}
+
+async function handleLogout() {
+  if (!confirm("ออกจากระบบ?")) return;
+  await _sb.auth.signOut();
+  showLogin();
+}
+
+function showLogin() {
+  document.getElementById("loginScreen").classList.remove("hidden");
+  document.getElementById("appRoot").classList.add("hidden");
+}
+
+function showApp(user) {
+  document.getElementById("loginScreen").classList.add("hidden");
+  document.getElementById("appRoot").classList.remove("hidden");
+  const userBox = document.getElementById("sbUserEmail");
+  if (userBox && user?.email) userBox.textContent = user.email;
+
+  if (_appBooted) return;
+  _appBooted = true;
+  renderTabs();
+  dataReady.then(() => renderPage());
+}
+
+// ---- Init: check existing session, then route ----
+(async () => {
+  const { data } = await _sb.auth.getSession();
+  if (data?.session) {
+    showApp(data.session.user);
+  } else {
+    showLogin();
+  }
+})();
+
+// Listen for session changes (e.g. token expiry, manual signOut)
+_sb.auth.onAuthStateChange((event, session) => {
+  if (event === "SIGNED_OUT" || !session) {
+    showLogin();
+  }
+});

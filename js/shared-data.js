@@ -257,6 +257,19 @@ async function deleteBooking(id) {
   _cache.bookings = _cache.bookings.filter(b => b.id !== id);
 }
 
+async function updateBookingById(id, updates) {
+  const b = _cache.bookings.find(b => b.id === id);
+  if (!b) return false;
+  return await updateBookingByRef(b.refCode, updates);
+}
+
+async function resendBookingEmail(bookingId) {
+  const { data, error } = await _sb.rpc("resend_booking_email", { p_booking_id: bookingId });
+  if (error) { console.error("resendBookingEmail:", error); return false; }
+  await _refreshAll();
+  return data === true;
+}
+
 // ---- Activity Logs ----
 
 async function addLog(bookingId, action, detail) {
