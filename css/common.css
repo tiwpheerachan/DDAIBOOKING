@@ -176,45 +176,51 @@ body {
 
 @media (max-width: 640px) {
   .navbar { height: 56px; }
-  .navbar-inner { padding: 0 12px; gap: 8px; }
+  .navbar-inner { padding: 0 12px; gap: 6px; }
   .navbar-logo-img { height: 20px; }
-  .navbar-actions { gap: 8px; }
+  .navbar-actions { gap: 6px; }
 
-  /* ddpai.com keeps text label */
+  /* ddpai.com — compact pill with icon + label */
   .navbar-site-link {
-    padding: 7px 12px;
+    padding: 7px 11px;
     background: var(--slate-100);
     border-radius: 999px;
-    font-size: 12.5px;
+    font-size: 12px;
     gap: 5px;
   }
 
-  .navbar-site-link svg {
-    width: 13px;
-    height: 13px;
-  }
+  .navbar-site-link svg { width: 13px; height: 13px; }
+  .navbar-site-link:hover { background: rgba(230, 0, 18, 0.12); }
 
-  .navbar-site-link:hover {
-    background: rgba(230, 0, 18, 0.12);
-  }
-
-  /* Check booking → icon-only circle (text is hidden) */
-  .navbar-check-btn .navbar-link-label { display: none; }
-
+  /* Check booking — compact pill with icon + label (กลับมาแสดงข้อความ) */
   .navbar-check-btn {
-    width: 38px;
-    height: 38px;
-    padding: 0;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    padding: 7px 12px;
+    font-size: 12px;
+    gap: 5px;
+    border-width: 1.5px;
     flex-shrink: 0;
+    white-space: nowrap;
   }
+
+  .navbar-check-btn svg { width: 13px; height: 13px; }
 }
 
-@media (max-width: 380px) {
-  .navbar-site-link { padding: 6px 10px; font-size: 11.5px; }
+@media (max-width: 420px) {
+  .navbar-inner { padding: 0 10px; gap: 5px; }
+  .navbar-site-link { padding: 6px 9px; font-size: 11.5px; }
+  .navbar-check-btn { padding: 6px 10px; font-size: 11.5px; }
+}
+
+/* Very small phones — collapse ddpai.com to icon only, keep check booking with text */
+@media (max-width: 360px) {
+  .navbar-site-link .navbar-link-label { display: none; }
+  .navbar-site-link {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
 }
 
 .navbar-divider {
