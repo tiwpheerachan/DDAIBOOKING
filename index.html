@@ -33,9 +33,20 @@
   <!-- Hero -->
   <div class="hero fade-in">
     <div class="hero-bg" aria-hidden="true"></div>
+    <div class="hero-particles" aria-hidden="true">
+      <div class="particles particles-small" id="particlesSmall"></div>
+      <div class="particles particles-medium" id="particlesMedium"></div>
+      <div class="particles particles-large" id="particlesLarge"></div>
+    </div>
     <div class="hero-content">
       <div class="hero-badge">Susco Pinklao · ปิ่นเกล้า กรุงเทพฯ</div>
-      <h1>Guarding Every<br/><span class="highlight">Precious Moment</span></h1>
+      <h1 class="hero-h1">
+        <span class="hero-h1-line">Guarding Every</span>
+        <span class="gooey-line">
+          <span class="gooey-text gt-1"></span>
+          <span class="gooey-text gt-2"></span>
+        </span>
+      </h1>
       <p>จองคิวติดตั้งกล้อง DDPAI ออนไลน์ — เลือกวันเวลาที่สะดวก กรอกข้อมูลรถยนต์ และรับการยืนยันทางอีเมลทันที</p>
       <div class="hero-actions">
         <a class="hero-cta" href="#mainContent" onclick="event.preventDefault();document.getElementById('mainContent').scrollIntoView({behavior:'smooth',block:'start'})">
@@ -72,6 +83,117 @@
     <p class="footer-text">DDPAI Thailand — Powered by Susco Pinklao</p>
     <p class="footer-copy">&copy; 2026 DDPAI. All rights reserved.</p>
   </div>
+
+  <!-- Inline SVG filter for gooey text morph -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <filter id="gooeyThreshold">
+        <feColorMatrix in="SourceGraphic" type="matrix"
+          values="1 0 0 0 0
+                  0 1 0 0 0
+                  0 0 1 0 0
+                  0 0 0 255 -140"/>
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- Gooey text morphing animator -->
+  <script>
+    (function () {
+      const texts = ["Precious Moment", "Every Mile", "Smart Drive", "Safe Journey"];
+      const morphTime = 1;       // seconds for blur in/out
+      const cooldownTime = 0.4;  // seconds between morphs
+
+      const el1 = document.querySelector('.gt-1');
+      const el2 = document.querySelector('.gt-2');
+      if (!el1 || !el2) return;
+
+      let textIndex = texts.length - 1;
+      let time = new Date();
+      let morph = 0;
+      let cooldown = cooldownTime;
+
+      el1.textContent = texts[textIndex];
+      el2.textContent = texts[(textIndex + 1) % texts.length];
+
+      function setMorph(fraction) {
+        el2.style.filter = 'blur(' + Math.min(8 / fraction - 8, 100) + 'px)';
+        el2.style.opacity = (Math.pow(fraction, 0.4) * 100) + '%';
+        fraction = 1 - fraction;
+        el1.style.filter = 'blur(' + Math.min(8 / fraction - 8, 100) + 'px)';
+        el1.style.opacity = (Math.pow(fraction, 0.4) * 100) + '%';
+      }
+
+      function doCooldown() {
+        morph = 0;
+        el2.style.filter = '';
+        el2.style.opacity = '100%';
+        el1.style.filter = '';
+        el1.style.opacity = '0%';
+      }
+
+      function doMorph() {
+        morph -= cooldown;
+        cooldown = 0;
+        let fraction = morph / morphTime;
+        if (fraction > 1) { cooldown = cooldownTime; fraction = 1; }
+        setMorph(fraction);
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+        const newTime = new Date();
+        const shouldIncrement = cooldown > 0;
+        const dt = (newTime.getTime() - time.getTime()) / 1000;
+        time = newTime;
+        cooldown -= dt;
+        if (cooldown <= 0) {
+          if (shouldIncrement) {
+            textIndex = (textIndex + 1) % texts.length;
+            el1.textContent = texts[textIndex % texts.length];
+            el2.textContent = texts[(textIndex + 1) % texts.length];
+          }
+          doMorph();
+        } else {
+          doCooldown();
+        }
+      }
+
+      // Respect reduced motion — just rotate without morph
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduced) {
+        el1.style.opacity = '100%';
+        el2.style.display = 'none';
+        let i = 0;
+        setInterval(() => { i = (i + 1) % texts.length; el1.textContent = texts[i]; }, 2200);
+      } else {
+        animate();
+      }
+    })();
+  </script>
+
+  <!-- Hero parallax particles generator -->
+  <script>
+    (function () {
+      function gen(count, color) {
+        const out = [];
+        for (let i = 0; i < count; i++) {
+          const x = Math.floor(Math.random() * 2400);
+          const y = Math.floor(Math.random() * 2400);
+          out.push(x + 'px ' + y + 'px ' + color);
+        }
+        return out.join(', ');
+      }
+      const isMobile = window.matchMedia('(max-width: 640px)').matches;
+      const factor = isMobile ? 0.45 : 1;
+      const small = document.getElementById('particlesSmall');
+      const med = document.getElementById('particlesMedium');
+      const lg = document.getElementById('particlesLarge');
+      if (small) small.style.boxShadow = gen(Math.round(500 * factor), 'rgba(255,255,255,0.9)');
+      if (med) med.style.boxShadow = gen(Math.round(180 * factor), 'rgba(255, 200, 150, 0.7)');
+      if (lg) lg.style.boxShadow = gen(Math.round(80 * factor), 'rgba(150, 220, 220, 0.6)');
+    })();
+  </script>
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
